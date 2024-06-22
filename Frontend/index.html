@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+
+{% block title %}Anlaysts Ranking{% endblock %}
+{% block forms %}
+
+<form action="/generate_data" method="POST">
+
+    <label for="start-date">Start Date:</label>
+    <input type="date" id="start-date" name="start-date" value="2000-01-01" required>
+    
+    <label for="end-date">End Date:</label>
+    <input type="date" id="end-date" name="end-date" value="2023-06-13" required>
+    
+    <label for="period">Period:</label>
+    <select id="period" name="period">
+        <option value="1Y" selected>1 Year</option>
+        <option value="6M">6 Months</option>
+        <option value="3M">3 Months</option>
+    </select>
+    <label for="analyst">Analyst:</label>
+    <select id="analyst" name="analyst">
+        <option value="All" selected>All</option>
+        <option value="Aditya Birla Money Limited">Aditya Birla Money Limited</option>
+        <option value="Ajcon Global">Ajcon Global</option>
+        <option value="Anand Rathi">Anand Rathi</option>
+        <option value="Angel Broking">Angel Broking</option>
+        <option value="Arihant Capital">Arihant Capital</option>
+        <option value="Ashika Research">Ashika Research</option>
+        <option value="Asit C Mehta Investment Intermediates">Asit C Mehta Investment Intermediates</option>
+        <option value="Asit C Mehta Investment Interrmediates">Asit C Mehta Investment Interrmediates</option>
+        <option value="AUM Capital">AUM Capital</option>
+        <option value="Axis Direct">Axis Direct</option>
+        <option value="BOB Capital Markets Ltd.">BOB Capital Markets Ltd.</option>
+        <option value="Bonanza">Bonanza</option>
+        <option value="BP Wealth">BP Wealth</option>
+        <option value="CD Equisearch">CD Equisearch</option>
+        <option value="Centrum Broking">Centrum Broking</option>
+        <option value="Choice India">Choice India</option>
+        <option value="Chola Wealth Direct">Chola Wealth Direct</option>
+        <option value="DAM Capital">DAM Capital</option>
+        <option value="Dolat Capital">Dolat Capital</option>
+        <option value="Dynamic Levels">Dynamic Levels</option>
+        <option value="East India Securities Ltd">East India Securities Ltd</option>
+        <option value="Edelweiss">Edelweiss</option>
+        <option value="Emkay">Emkay</option>
+        <option value="Equirus Wealth">Equirus Wealth</option>
+        <option value="FundsIndia">FundsIndia</option>
+        <option value="Geojit BNP Paribas">Geojit BNP Paribas</option>
+        <option value="GEPL Capital">GEPL Capital</option>
+        <option value="HDFC Securities">HDFC Securities</option>
+        <option value="Hem Securities">Hem Securities</option>
+        <option value="ICICI Direct">ICICI Direct</option>
+        <option value="ICICI Securities Limited">ICICI Securities Limited</option>
+        <option value="IDBI Capital">IDBI Capital</option>
+        <option value="IIFL Holdings">IIFL Holdings</option>
+        <option value="IIFL Securities">IIFL Securities</option>
+        <option value="InCred Equities">InCred Equities</option>
+        <option value="Investment Imperative">Investment Imperative</option>
+        <option value="JM Financial">JM Financial</option>
+        <option value="Joindre Capital Services">Joindre Capital Services</option>
+        <option value="KamayaKya Wealth">KamayaKya Wealth</option>
+        <option value="Karvy">Karvy</option>
+        <option value="Keynote Capitals Ltd">Keynote Capitals Ltd</option>
+        <option value="Keynotes Financial Opiniery">Keynotes Financial Opiniery</option>
+        <option value="Khambatta Securities">Khambatta Securities</option>
+        <option value="Kotak Securities">Kotak Securities</option>
+        <option value="KRChoksey">KRChoksey</option>
+        <option value="LKP Securities">LKP Securities</option>
+        <option value="Mehta Equities">Mehta Equities</option>
+        <option value="Monarch Networth Capital Limited">Monarch Networth Capital Limited</option>
+        <option value="Motilal Oswal">Motilal Oswal</option>
+        <option value="Phillip Capital">Phillip Capital</option>
+        <option value="Prabhudas Lilladhar">Prabhudas Lilladhar</option>
+        <option value="Prabhudas Lilladher">Prabhudas Lilladher</option>
+        <option value="Reliance Securities">Reliance Securities</option>
+        <option value="Religare">Religare</option>
+        <option value="Rudra Shares and Stock Brokers Ltd">Rudra Shares and Stock Brokers Ltd</option>
+        <option value="SBI Securities">SBI Securities</option>
+        <option value="Share India">Share India</option>
+        <option value="Sharekhan">Sharekhan</option>
+        <option value="SMC online">SMC online</option>
+        <option value="SPA Research">SPA Research</option>
+        <option value="StoxBox - BP Wealth">StoxBox - BP Wealth</option>
+        <option value="Stoxbox - BP Wealth">Stoxbox - BP Wealth</option>
+        <option value="Sushil Finance">Sushil Finance</option>
+        <option value="Systematix Group">Systematix Group</option>
+        <option value="Trendlyne Analysis">Trendlyne Analysis</option>
+        <option value="Ventura">Ventura</option>
+        <option value="Way2Wealth">Way2Wealth</option>
+        <option value="Yes Securities">Yes Securities</option>
+
+    </select>
+    <input type="submit" value="Generate" id="submit-button">
+</form>
+<form id="sort-form" method="POST" action="/sort_table">
+    <label for="sort-by">Sort By:</label>
+    <select name="sort_by" id="sort-by">
+        <option value="Success %">Success %</option>
+        <option value="Total Calls in Period: ">Total Calls</option>
+        <option value="Total Successes in the period: ">Total Successes</option>
+        
+    </select>
+    <button type="submit" id="submit-button">Sort</button>
+</form>
+{% endblock %}   
+
+
+{% block df %}
+       
+<h2>DataFrame Display</h2>
+<div class="container">
+    {{ df | safe }}
+</div>
+{% endblock %}
