@@ -22,7 +22,7 @@ def load_data():
     l1 = df['0'].tolist() 
 
     #path to the Calls data CSV
-    calls_data_file_path = r'E:\python\CompleteScrapedData.csv' 
+    calls_data_file_path = r'E:\python\CallsWithRecoPrice.csv' 
 
     #Historic stocks data CSV file path
     historic_company_data_file_path = r'E:\python\HistoricDataWithCompanyAgain.csv'
@@ -104,7 +104,7 @@ def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst
         calls = 0
         successes = 0
         percentage=0 
-        for tar, adv, dat, com in zip(bdf['Target'], bdf['Advice'], bdf['Date'], bdf['Company']):
+        for tar, adv, dat, com, reco in zip(bdf['Target'], bdf['Advice'], bdf['Date'], bdf['Company'],bdf["Reco"]):
 
             call_date = dat
             till_date = call_date + x #x created from dur at the beginning
@@ -117,23 +117,31 @@ def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst
 
             # need to do this using reco price asap
             # if all these them reach using high else using low
-            if adv in ['Buy', 'Neutral', 'Hold', 'Accumulate']:
-                #defining reach as the highest point the company reached in the given period to be compared with the target to deem success
-                reach = company_data[com]['High'][
+            if reco !=None:
+                if reco<tar:
+                    reach = company_data[com]['High'][
                     (company_data[com]['Date'] >= call_date) & (company_data[com]['Date'] <= till_date)].max()
-            else:
-
-                #defining reach as the lowest point the company reached in the given period to be compared with the target to deem success
-                reach = company_data[com]['Low'][
+                else:
+                    reach = company_data[com]['Low'][
                     (company_data[com]['Date'] >= call_date) & (company_data[com]['Date'] <= till_date)].min()
+            else:
+                if adv in ['Buy', 'Neutral', 'Hold', 'Accumulate']:
+                    #defining reach as the highest point the company reached in the given period to be compared with the target to deem success
+                    reach = company_data[com]['High'][
+                        (company_data[com]['Date'] >= call_date) & (company_data[com]['Date'] <= till_date)].max()
+                else:
+
+                    #defining reach as the lowest point the company reached in the given period to be compared with the target to deem success
+                    reach = company_data[com]['Low'][
+                        (company_data[com]['Date'] >= call_date) & (company_data[com]['Date'] <= till_date)].min()
 
             # isna checks if the value is NaN
             if reach is not None and not pd.isna(reach) and not pd.isna(tar):
-                if adv in ['Buy', 'Neutral', 'Hold', 'Accumulate']:
-                    if reach >= tar:
+                if reco is not None:
+                    if (reco < tar and reach >= tar) or (reco > tar and reach <= tar):
                         successes += 1
                 else:
-                    if reach <= tar:
+                    if (adv in ['Buy', 'Neutral', 'Hold', 'Accumulate'] and reach >= tar) or (adv not in ['Buy', 'Neutral', 'Hold', 'Accumulate'] and reach <= tar):
                         successes += 1
 
             percentage = (successes / calls) * 100 if calls != 0 else 0
