@@ -14,6 +14,9 @@ def load_data():
 
     #Path to the "ToBeIgnored" CSV file
     fpath = r'E:\python\ToBeIgnored.csv' 
+    fpathanalysts=r'E:\python\UniqueAnalysts1.csv'
+    df_for_analysts=pd.read_csv(fpathanalysts)
+    list_of_unique_analysts=df_for_analysts['0']
 
 
     df = pd.read_csv(fpath)
@@ -22,7 +25,7 @@ def load_data():
     l1 = df['0'].tolist() 
 
     #path to the Calls data CSV
-    calls_data_file_path = r'E:\python\CallsWithRecoPrice.csv' 
+    calls_data_file_path = r'E:\python\UpdatedCallsWithRecoPriceAndTickers.csv' 
 
     #Historic stocks data CSV file path
     historic_company_data_file_path = r'E:\python\HistoricDataWithCompanyAgain.csv'
@@ -42,7 +45,7 @@ def load_data():
     # Create a dictionary to store DataFrames for each company
     company_data = {company: df.reset_index(drop=True) for company, df in history_df.groupby('Company')}
 
-    return l1, analyst_dfs, company_data
+    return l1, analyst_dfs, company_data,list_of_unique_analysts
 
 def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst_dfs, company_data):
 
@@ -68,13 +71,13 @@ def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst
 
     #dictionary to be converted to df finally
     final_dict = {}
-
+    unique_company={}
     # Traverses all analysts available
     for broker in analyst_dfs:
 
         #All analysts in the list
         if broker in to_be_processed:
-
+            
             # if the start date is less than the first call made by the broker and end date is greater than that
             # Need to put a warning message that pops up to warn the user but not hinder the process
             if start_date < analyst_dfs[broker]['Date'].iloc[-1]:
@@ -85,7 +88,7 @@ def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst
                         (analyst_dfs[broker]['Date'] >= start_date) & (analyst_dfs[broker]['Date'] <= end_date) & (
                             ~analyst_dfs[broker]['Company'].isin(l1))]
                     
-                    calls_to_be_processed[broker] = filtered_df
+                    calls_to_be_processed[broker] = filtered_df.reset_index()
                 #if end date is also less than the first call
                 else:
                     continue
@@ -104,6 +107,7 @@ def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst
         calls = 0
         successes = 0
         percentage=0 
+        broker_company={}
         for tar, adv, dat, com, reco in zip(bdf['Target'], bdf['Advice'], bdf['Date'], bdf['Company'],bdf["Reco"]):
 
             call_date = dat
@@ -113,7 +117,10 @@ def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst
             if company_data[com]['Date'].iloc[-1] < till_date:
                 continue
             calls += 1
-
+            if com not in broker_company:
+                broker_company[com]=1
+            else:
+                broker_company[com]+=1
 
             # need to do this using reco price asap
             # if all these them reach using high else using low
@@ -143,11 +150,12 @@ def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst
                 else:
                     if (adv in ['Buy', 'Neutral', 'Hold', 'Accumulate'] and reach >= tar) or (adv not in ['Buy', 'Neutral', 'Hold', 'Accumulate'] and reach <= tar):
                         successes += 1
-
-            percentage = (successes / calls) * 100 if calls != 0 else 0
-            percentage = round(percentage, 1)
+        unique_stocks=len(broker_company)
+        percentage = (successes / calls) * 100 if calls != 0 else 0
+        percentage = round(percentage, 1)
         final_dict[broker] = {"Total Calls in Period: ": calls, "Total Successes in the period: ": successes,
-                              "Success %": percentage}
+                              "Success %": percentage,"No. of Unique Stocks":unique_stocks}
+        unique_company[broker]=pd.DataFrame([broker_company], index=[broker])
 
     # final_df that is used to render the df
     final_df = pd.DataFrame.from_dict(final_dict, orient='index')
@@ -155,7 +163,7 @@ def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst
         final_df = final_df.sort_values(by='Success %', ascending=False)
     if final_df is not None:
         format_numbers_to_indian_system(final_df, ["Total Calls in Period: ", "Total Successes in the period: "])
-    return final_df
+    return final_df,calls_to_be_processed
 
 def sort_data_frame(final_df, sort_by):
     final_df = revert_indian_number_format(final_df, ["Total Calls in Period: ", "Total Successes in the period: "])
