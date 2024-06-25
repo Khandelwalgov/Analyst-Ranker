@@ -45,7 +45,10 @@ def load_data():
     # Create a dictionary to store DataFrames for each company
     company_data = {company: df.reset_index(drop=True) for company, df in history_df.groupby('Company')}
 
-    return l1, analyst_dfs, company_data,list_of_unique_analysts
+    calls_by_company= {company: df.reset_index(drop=True) for company, df in calls_df.groupby('Company')}
+
+
+    return l1, analyst_dfs, company_data,list_of_unique_analysts, calls_by_company
 
 def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst_dfs, company_data):
 
@@ -155,7 +158,7 @@ def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst
         percentage = round(percentage, 1)
         final_dict[broker] = {"Total Calls in Period: ": calls, "Total Successes in the period: ": successes,
                               "Success %": percentage,"No. of Unique Stocks":unique_stocks}
-        unique_company[broker]=pd.DataFrame([broker_company], index=[broker])
+        unique_company[broker]=pd.DataFrame([broker_company], index=[broker]).transpose().sort_values(by=broker,ascending=False)
 
     # final_df that is used to render the df
     final_df = pd.DataFrame.from_dict(final_dict, orient='index')
@@ -163,10 +166,22 @@ def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst
         final_df = final_df.sort_values(by='Success %', ascending=False)
     if final_df is not None:
         format_numbers_to_indian_system(final_df, ["Total Calls in Period: ", "Total Successes in the period: "])
-    return final_df,calls_to_be_processed
+    return final_df,calls_to_be_processed, unique_company
 
 def sort_data_frame(final_df, sort_by):
     final_df = revert_indian_number_format(final_df, ["Total Calls in Period: ", "Total Successes in the period: "])
     final_df = final_df.sort_values(by=sort_by, ascending=False)
     final_df = format_numbers_to_indian_system(final_df, ["Total Calls in Period: ", "Total Successes in the period: "])
     return final_df
+
+def hot_stocks_backend(calls_by_company,l1):
+    companies =[]
+    number_of_calls=[]
+    
+    for company in calls_by_company:
+        if company not in l1:
+            companies.append(company)
+            number_of_calls.append(len(calls_by_company[company]))
+    
+    stocks_details_df=pd.DataFrame([company,number_of_calls],columns=["Company","Number of calls made"]).sort_values(by="Number of calls made",ascending=False)
+    return stocks_details_df

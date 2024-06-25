@@ -7,11 +7,12 @@ app = Flask(__name__)
 app.secret_key = 'koinahibtayega'  # Needed to encrypt session data
 
 # Global definition of l1, analysts, and company data to ensure they are loaded only once, saving time
-l1, analyst_dfs, company_data,list_of_unique_analysts = load_data()
+l1, analyst_dfs, company_data,list_of_unique_analysts, calls_by_company = load_data()
 
 # Global definition of final_df to make sorting easier as it won't have to be processed again every time sorting has to be done
 columns = ['Total Calls in Period: ', 'Total Successes in the period: ', 'Success %']
 final_df = pd.DataFrame(columns=columns)
+unique_company={}
 calls_to_be_processed= {}
 # Default values for the form
 default_form_values = {
@@ -37,6 +38,7 @@ def index():
 def generate_data():
     global calls_to_be_processed
     global final_df
+    global unique_company
     form_values = {
         'start-date': request.form['start-date'],
         'end-date': request.form['end-date'],
@@ -50,7 +52,7 @@ def generate_data():
     dur = form_values['period']
     analyst_to_be_displayed = form_values['analyst']
 
-    final_df,calls_to_be_processed = process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst_dfs, company_data)
+    final_df,calls_to_be_processed,unique_company = process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst_dfs, company_data)
     return render_template('index.html', df=final_df, form_values=form_values, dropdown_options=dropdown_options)
 
 @app.route('/sort_table', methods=['POST'])
@@ -70,6 +72,18 @@ def get_analyst_details():
         details_html = details_df.to_html(classes='table table-striped')
         return jsonify({'html': details_html})
     return jsonify({'html': 'No details available for this analyst.'})
+@app.route('/get_analyst_company_details')
+def get_analyst_company_details():
+    analyst = request.args.get('analyst')
+    if analyst in unique_company:
+        details_df=unique_company[analyst]
+        details_html=details_df.to_html(classes='table table-striped')
+        return jsonify({'html': details_html})
+    return jsonify({'html': 'No details available for this analyst.'})
+
+@app.route('/stocks')
+def stocks():
+    return render_template('stocks.html')
 
 if __name__ == "__main__":
     app.run(debug=True)
