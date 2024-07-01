@@ -1,5 +1,6 @@
 import datetime
 import pandas as pd
+import numpy as np
 from util import convert_date, revert_indian_number_format, format_numbers_to_indian_system
 '''
 main.py file with the functions to be used with different paths and triggers in app.py
@@ -14,24 +15,24 @@ def load_data():
 
     #Path to the "ToBeIgnored" CSV file
     fpath = r'E:\python\ToBeIgnored.csv' 
+    #Path to list of unique analysts
     fpathanalysts=r'E:\python\UniqueAnalysts1.csv'
-    df_for_analysts=pd.read_csv(fpathanalysts)
-    list_of_unique_analysts=df_for_analysts['0']
-
-
-    df = pd.read_csv(fpath)
-
-    #List containing companies whose data/ticker symbol is not correct
-    l1 = df['0'].tolist() 
-
     #path to the Calls data CSV
-    calls_data_file_path = r'E:\python\UpdatedCallsWithRecoPriceAndTickers.csv' 
-
+    # old file calls_data_file_path = r'E:\python\UpdatedCallsWithRecoPriceAndTickers.csv' 
+    calls_data_file_path = r'E:\python\CallsWithUpdatedUpside.csv'
     #Historic stocks data CSV file path
-    historic_company_data_file_path = r'E:\python\HistoricDataWithCompanyAgain.csv'
+    # old file historic_company_data_file_path = r'E:\python\HistoricDataWithCompanyAgain.csv'
+    historic_company_data_file_path = r'E:\python\HistoricDataUpdatedTickersCorrectly.csv'
+
+    df_for_analysts=pd.read_csv(fpathanalysts)
+    df = pd.read_csv(fpath)
     calls_df = pd.read_csv(calls_data_file_path)
     history_df = pd.read_csv(historic_company_data_file_path)
 
+
+    list_of_unique_analysts=df_for_analysts['0']
+    #List containing companies whose data/ticker symbol is not correct
+    l1 = df['0'].tolist() 
 
     # Converting the Date columns to DateTime objects
     calls_df['Date'] = calls_df['Date'].apply(convert_date)
@@ -45,7 +46,7 @@ def load_data():
     # Create a dictionary to store DataFrames for each company
     company_data = {company: df.reset_index(drop=True) for company, df in history_df.groupby('Company')}
 
-    calls_by_company= {company: df.reset_index(drop=True) for company, df in calls_df.groupby('Company')}
+    calls_by_company= {company: df.reset_index(drop=True).sort_values(by="Date",ascending=False) for company, df in calls_df.groupby('Company')}
 
 
     return l1, analyst_dfs, company_data,list_of_unique_analysts, calls_by_company
@@ -65,7 +66,7 @@ def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst
 
     #Dictionary for the calls for each analyst to be processed in the form dict[Analyst]= Dataframe segment to be processed
     calls_to_be_processed = {}
-
+    calls_after=datetime.date(2018,1,1)
 
     if analyst_to_be_displayed == 'All':
         to_be_processed = list(analyst_dfs.keys())
@@ -89,9 +90,9 @@ def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst
                     # filtered_df consisting of all the calls made between the dates and with the company not in l1
                     filtered_df = analyst_dfs[broker][
                         (analyst_dfs[broker]['Date'] >= start_date) & (analyst_dfs[broker]['Date'] <= end_date) & (
-                            ~analyst_dfs[broker]['Company'].isin(l1))]
+                            ~analyst_dfs[broker]['Company'].isin(l1)) & (analyst_dfs[broker]['Date'] >= calls_after)&(analyst_dfs[broker]['To Be Taken']==1)]
                     
-                    calls_to_be_processed[broker] = filtered_df.reset_index()
+                    calls_to_be_processed[broker] = filtered_df.reset_index(drop=True)
                 #if end date is also less than the first call
                 else:
                     continue
@@ -100,24 +101,27 @@ def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst
                 # filtered_df consisting of all the calls made between the dates and with the company not in l1
                 filtered_df = analyst_dfs[broker][
                     (analyst_dfs[broker]['Date'] >= start_date) & (analyst_dfs[broker]['Date'] <= end_date) & (
-                        ~analyst_dfs[broker]['Company'].isin(l1))]
+                        ~analyst_dfs[broker]['Company'].isin(l1)) & (analyst_dfs[broker]['Date'] >= calls_after) &(analyst_dfs[broker]['To Be Taken']==1)]
                 calls_to_be_processed[broker] = filtered_df
     # the calls_to_be_processed dictionary to later be used to showcase on the frontend all the calls considered while doing the analysis of a given broker 
 
 
     for broker in calls_to_be_processed:
         bdf = calls_to_be_processed[broker]
+        sum_for_average=datetime.timedelta(days=0)
         calls = 0
         successes = 0
         percentage=0 
         broker_company={}
         for tar, adv, dat, com, reco in zip(bdf['Target'], bdf['Advice'], bdf['Date'], bdf['Company'],bdf["Reco"]):
-
+            tar = float(tar)
+            reco = float(reco)
             call_date = dat
             till_date = call_date + x #x created from dur at the beginning
-
+            cdf=company_data[com]
+            reach =0
             #if latest data is older than the till date, continue
-            if company_data[com]['Date'].iloc[-1] < till_date:
+            if cdf['Date'].iloc[-1] < till_date:
                 continue
             calls += 1
             if com not in broker_company:
@@ -129,35 +133,87 @@ def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst
             # if all these them reach using high else using low
             if reco !=None:
                 if reco<tar:
-                    reach = company_data[com]['High'][
-                    (company_data[com]['Date'] >= call_date) & (company_data[com]['Date'] <= till_date)].max()
+                    reach = cdf['High'][
+                    (cdf['Date'] >= call_date) & (cdf['Date'] <= till_date)].max()
                 else:
-                    reach = company_data[com]['Low'][
-                    (company_data[com]['Date'] >= call_date) & (company_data[com]['Date'] <= till_date)].min()
+                    reach = cdf['Low'][
+                    (cdf['Date'] >= call_date) & (cdf['Date'] <= till_date)].min()
             else:
                 if adv in ['Buy', 'Neutral', 'Hold', 'Accumulate']:
                     #defining reach as the highest point the company reached in the given period to be compared with the target to deem success
-                    reach = company_data[com]['High'][
-                        (company_data[com]['Date'] >= call_date) & (company_data[com]['Date'] <= till_date)].max()
+                    reach = cdf['High'][
+                        (cdf['Date'] >= call_date) & (cdf['Date'] <= till_date)].max()
                 else:
 
                     #defining reach as the lowest point the company reached in the given period to be compared with the target to deem success
-                    reach = company_data[com]['Low'][
-                        (company_data[com]['Date'] >= call_date) & (company_data[com]['Date'] <= till_date)].min()
+                    reach = cdf['Low'][
+                        (cdf['Date'] >= call_date) & (cdf['Date'] <= till_date)].min()
 
             # isna checks if the value is NaN
             if reach is not None and not pd.isna(reach) and not pd.isna(tar):
                 if reco is not None:
                     if (reco < tar and reach >= tar) or (reco > tar and reach <= tar):
                         successes += 1
+
                 else:
                     if (adv in ['Buy', 'Neutral', 'Hold', 'Accumulate'] and reach >= tar) or (adv not in ['Buy', 'Neutral', 'Hold', 'Accumulate'] and reach <= tar):
                         successes += 1
+                
+                if reco is not None:
+
+                    if (reco < tar and reach >= tar):  
+                        cdf_dates = cdf["Date"].to_numpy()
+                        # Find the index where the call_date would fit in the sorted array
+                        start_index = np.searchsorted(cdf_dates, call_date)
+
+                        # Make sure that start_index is within the bounds of the dataframe
+                        start_index = min(start_index, len(cdf) - 1)
+                        for d,h in zip(cdf["Date"].iloc[start_index:], cdf["High"].iloc[start_index:]):
+                            if h>=tar:
+                                sum_for_average+=(d-call_date)
+                                break
+                    elif (reco > tar and reach <= tar):
+                        cdf_dates = cdf["Date"].to_numpy()
+                        # Find the index where the call_date would fit in the sorted array
+                        start_index = np.searchsorted(cdf_dates, call_date)
+
+                        # Make sure that start_index is within the bounds of the dataframe
+                        start_index = min(start_index, len(cdf) - 1)
+                        for d,l in zip(cdf["Date"].iloc[start_index:], cdf["Low"].iloc[start_index:]):
+                            if l<=tar:
+                                sum_for_average+=(d-call_date)
+                                break
+                else:
+                    if (adv in ['Buy', 'Neutral', 'Hold', 'Accumulate'] and reach >= tar):  
+                        cdf_dates = cdf["Date"].to_numpy()
+                        # Find the index where the call_date would fit in the sorted array
+                        start_index = np.searchsorted(cdf_dates, call_date)
+
+                        # Make sure that start_index is within the bounds of the dataframe
+                        start_index = min(start_index, len(cdf) - 1)
+                        for d,h in zip(cdf["Date"].iloc[start_index:], cdf["High"].iloc[start_index:]):
+                            if h>=tar:
+                                sum_for_average+=(d-call_date)
+                                break
+                    elif (adv not in ['Buy', 'Neutral', 'Hold', 'Accumulate'] and reach <= tar):
+                        cdf_dates = cdf["Date"].to_numpy()
+                        # Find the index where the call_date would fit in the sorted array
+                        start_index = np.searchsorted(cdf_dates, call_date)
+
+                        # Make sure that start_index is within the bounds of the dataframe
+                        start_index = min(start_index, len(cdf) - 1)
+                        
+                        for d,l in zip(cdf["Date"].iloc[start_index:], cdf["Low"].iloc[start_index:]):
+                            if l<=tar:
+                                sum_for_average+=(d-call_date)
+                                break
+                
         unique_stocks=len(broker_company)
         percentage = (successes / calls) * 100 if calls != 0 else 0
         percentage = round(percentage, 1)
+        avg_time = (sum_for_average/calls).days if calls!=0 else 0
         final_dict[broker] = {"Total Calls in Period: ": calls, "Total Successes in the period: ": successes,
-                              "Success %": percentage,"No. of Unique Stocks":unique_stocks}
+                              "Success %": percentage, "Average days taken by successful calls" : avg_time,"No. of Unique Stocks":unique_stocks}
         unique_company[broker]=pd.DataFrame([broker_company], index=[broker]).transpose().sort_values(by=broker,ascending=False)
 
     # final_df that is used to render the df
@@ -174,14 +230,20 @@ def sort_data_frame(final_df, sort_by):
     final_df = format_numbers_to_indian_system(final_df, ["Total Calls in Period: ", "Total Successes in the period: "])
     return final_df
 
-def hot_stocks_backend(calls_by_company,l1):
-    companies =[]
-    number_of_calls=[]
+def hot_stocks_backend(calls_by_company, l1):
+    companies = []
+    number_of_calls = []
     
     for company in calls_by_company:
         if company not in l1:
             companies.append(company)
             number_of_calls.append(len(calls_by_company[company]))
     
-    stocks_details_df=pd.DataFrame([company,number_of_calls],columns=["Company","Number of calls made"]).sort_values(by="Number of calls made",ascending=False)
+    # Create a DataFrame from dictionaries or tuples where each tuple is a separate row
+    data = {'Company': companies, 'Number of calls made': number_of_calls}
+    stocks_details_df = pd.DataFrame(data)
+    
+    # Sort DataFrame by 'Number of calls made' in descending order
+    stocks_details_df = stocks_details_df.sort_values(by="Number of calls made", ascending=False)
+    
     return stocks_details_df

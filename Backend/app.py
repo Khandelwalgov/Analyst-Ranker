@@ -1,5 +1,5 @@
-from flask import Flask, render_template, request, session, redirect, url_for, jsonify
-from main import load_data, process_data, sort_data_frame
+from flask import Flask, render_template, request, session, redirect, url_for, jsonify, redirect
+from main import load_data, process_data, sort_data_frame, hot_stocks_backend
 from util import convert_date
 import pandas as pd
 
@@ -30,8 +30,23 @@ dropdown_options = {
 
 @app.route('/')
 def index():
-    if 'form_values' not in session:
-        session['form_values'] = default_form_values
+    session.clear()  # Clear session data
+    global default_form_values
+    global calls_to_be_processed
+    global final_df
+    global unique_company
+    default_form_values = {
+    'start-date': '2000-01-01',
+    'end-date': '2023-06-13',
+    'period': '1Y',
+    'analyst': 'All'
+    }
+    start_date = convert_date(default_form_values['start-date'])
+    end_date = convert_date(default_form_values['end-date'])
+    dur = default_form_values['period']
+    analyst_to_be_displayed = default_form_values['analyst']
+    session['form_values'] = default_form_values
+    final_df,calls_to_be_processed,unique_company = process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst_dfs, company_data)
     return render_template('index.html',df=final_df, form_values=session['form_values'], dropdown_options=dropdown_options)
 
 @app.route('/generate_data', methods=['POST'])
@@ -83,7 +98,21 @@ def get_analyst_company_details():
 
 @app.route('/stocks')
 def stocks():
-    return render_template('stocks.html')
+    df=hot_stocks_backend(calls_by_company,l1)
+    return render_template('stocks.html',df=df)
+@app.route('/get_stocks_details')
+def get_stocks_details():
+    company = request.args.get('company')
+    if company in calls_by_company:
+        details_df=calls_by_company[company]
+        details_html=details_df.to_html(classes='table table-striped')
+        return jsonify({'html': details_html})
+    return jsonify({'html': 'No details available for this company.'})
+@app.route('/reset_session')
+def reset_session():
+    session['form_values'] = default_form_values
+    return redirect(url_for('index'))
 
 if __name__ == "__main__":
+    
     app.run(debug=True)
