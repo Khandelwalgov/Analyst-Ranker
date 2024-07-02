@@ -13,6 +13,12 @@ Analyst Ranker Directory
 <br/>
 --base.html
 <br/>
+--analyst.html
+<br/>
+--stock.html
+<br/>
+--recommendation.html
+<br/>
 -static
 <br/>
 --css
