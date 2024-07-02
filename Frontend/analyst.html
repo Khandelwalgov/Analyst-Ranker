@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}Analysts Ranking{% endblock %}
+
+{% block navigationbar %}
+<div class="topnav">
+    <a href={{url_for('index')}}>Home</a>
+    <a class = "active" href={{url_for('analyst')}}>Analyst View</a>
+    <a href={{url_for('stocks')}}>Hot Stocks</a>
+    <a href="{{url_for('recommendation')}}">Recommendations</a>
+    <a href="#about">About</a>
+    </div>
+<div class="container">
+{% endblock %}
+
+
+{% block forms %}
+<form action="/generate_data" method="POST">
+    <label for="start-date">Start Date:</label>
+    <input type="date" id="start-date" name="start-date" value="{{ form_values['start-date'] }}" required>
+    
+    <label for="end-date">End Date:</label>
+    <input type="date" id="end-date" name="end-date" value="{{ form_values['end-date'] }}" required>
+    
+    <label for="period">Period:</label>
+    <select id="period" name="period">
+        {% for option in dropdown_options['period'] %}
+        <option value="{{ option }}" {% if form_values['period'] == option %}selected{% endif %}>{{ option }}</option>
+        {% endfor %}
+    </select>
+
+    <label for="analyst">Analyst:</label>
+    <select id="analyst" name="analyst">
+        {% for option in dropdown_options['analyst'] %}
+        <option value="{{ option }}" {% if form_values['analyst'] == option %}selected{% endif %}>{{ option }}</option>
+        {% endfor %}
+    </select>
+    
+    <input type="submit" value="Generate" id="submit-button">
+</form>
+
+<form id="sort-form" method="POST" action="/sort_table">
+    <label for="sort-by">Sort By:</label>
+    <select name="sort_by" id="sort-by">
+        <option value="Success %">Success %</option>
+        <option value="Total Calls in Period: ">Total Calls</option>
+        <option value="Total Successes in the period: ">Total Successes</option>
+    </select>
+    <button type="submit" id="submit-button">Sort</button>
+</form>
+{% endblock %}   
+
+{% block df %}
+<h2>DataFrame Display ( calls from 2018 onwards only)</h2>
+<div class="container">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Analyst</th>
+                <th>Total Calls in Period</th>
+                <th>Total Successes in the period</th>
+                <th>Success %</th>
+                <th>Average days taken by successful calls</th> 
+                <th>Number of unique stocks</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for index, row in df.iterrows() %}
+            <tr>
+                <th>{{ row.name }}</tb>
+                <td>{{ row['Total Calls in Period: '] }}</td>
+                <td>{{ row['Total Successes in the period: '] }}</td>
+                <td>{{ row['Success %'] }}</td>
+               <td>{{ row['Average days taken by successful calls']}}</td> 
+                <td class ="hover-target" data-details="{{row.name}}">{{ row['No. of Unique Stocks'] }}</td>               
+                <td><button class="eye-button" data-toggle="modal" data-target="#detailsModal" data-analyst="{{ row.name }}">&#128065;</button></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div id="hover-modal" class="hover-modal"></div>
+<div id="detailsModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <div id="analyst-details"></div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const eyeButtons = document.querySelectorAll('.eye-button');
+        const modal = document.getElementById('detailsModal');
+        const closeBtn = modal.querySelector('.close');
+        const hoverTargets = document.querySelectorAll('.hover-target');
+        const hoverModal = document.getElementById('hover-modal');
+
+        eyeButtons.forEach(button => {
+            button.addEventListener('click', function () {
+                const analyst = this.getAttribute('data-analyst');
+                fetch(`/get_analyst_details?analyst=${analyst}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const analystDetails = document.getElementById('analyst-details');
+                        analystDetails.innerHTML = data.html;
+                        modal.style.display = 'block';
+                    });
+            });
+        });
+
+        closeBtn.addEventListener('click', function () {
+            modal.style.display = 'none';
+        });
+
+        window.addEventListener('click', function (event) {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+
+        hoverTargets.forEach(target => {
+            target.addEventListener('mouseenter', function (e) {
+                const details = this.getAttribute('data-details');
+                fetch(`/get_analyst_company_details?analyst=${details}`)
+                .then(response => response.json())
+                    .then(data => {
+                        const hoverModal = document.getElementById('hover-modal');
+                        hoverModal.innerHTML = data.html;
+                        const rect = this.getBoundingClientRect();
+                        hoverModal.style.left = `${rect.left + window.scrollX}px`;
+                        hoverModal.style.top = `${rect.bottom + window.scrollY}px`;
+                        hoverModal.style.display = 'block';
+                    });
+                
+            });
+            target.addEventListener('mouseleave', function () {
+                // Ensure hover-modal is hidden only if the mouse is not over the modal itself
+                if (!isMouseOverElement(hoverModal)) {
+                    hoverModal.style.display = 'none';
+                }
+            });
+
+           
+        });
+        hoverModal.addEventListener('mouseenter', function () {
+            hoverModal.style.display = 'block'; // Ensure it stays displayed
+        });
+
+        hoverModal.addEventListener('mouseleave', function () {
+            // Ensure hover-modal is hidden only if the mouse is not over any hover-target
+            if (!isMouseOverAnyHoverTarget()) {
+                hoverModal.style.display = 'none';
+            }
+        });
+
+        // Function to check if the mouse is over the hover-modal
+        function isMouseOverElement(element) {
+            const rect = element.getBoundingClientRect();
+            return (
+                event.clientX >= rect.left &&
+                event.clientX <= rect.right &&
+                event.clientY >= rect.top &&
+                event.clientY <= rect.bottom
+            );
+        }
+
+        // Function to check if the mouse is over any hover-target
+        function isMouseOverAnyHoverTarget() {
+            for (const target of hoverTargets) {
+                const rect = target.getBoundingClientRect();
+                if (
+                    event.clientX >= rect.left &&
+                    event.clientX <= rect.right &&
+                    event.clientY >= rect.top &&
+                    event.clientY <= rect.bottom
+                ) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    });
+</script>
+</body>
+</html>
+{% endblock %}
