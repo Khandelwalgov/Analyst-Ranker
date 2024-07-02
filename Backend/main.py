@@ -1,6 +1,7 @@
 import datetime
 import pandas as pd
 import numpy as np
+import yfinance as yf
 from util import convert_date, revert_indian_number_format, format_numbers_to_indian_system
 '''
 main.py file with the functions to be used with different paths and triggers in app.py
@@ -37,7 +38,8 @@ def load_data():
     # Converting the Date columns to DateTime objects
     calls_df['Date'] = calls_df['Date'].apply(convert_date)
     history_df['Date'] = history_df['Date'].apply(convert_date)
-
+    calls_df['Reco']=calls_df['Reco'].round(2)
+    calls_df['Upside']=calls_df['Upside'].round(2)
     unique_analysts = calls_df['Analyst'].unique()
 
     # Create a dictionary to store DataFrames for each analyst
@@ -48,8 +50,10 @@ def load_data():
 
     calls_by_company= {company: df.reset_index(drop=True).sort_values(by="Date",ascending=False) for company, df in calls_df.groupby('Company')}
 
+    
 
-    return l1, analyst_dfs, company_data,list_of_unique_analysts, calls_by_company
+
+    return l1, analyst_dfs, company_data,list_of_unique_analysts, calls_by_company, calls_df
 
 def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst_dfs, company_data):
 
@@ -247,3 +251,121 @@ def hot_stocks_backend(calls_by_company, l1):
     stocks_details_df = stocks_details_df.sort_values(by="Number of calls made", ascending=False)
     
     return stocks_details_df
+
+def recommended_stocks(sort_by,priority,period,num,calls_df,l1,analyst_rank):
+    top_=int(num)
+    priority=priority
+    sort_by=sort_by
+    ['1D','5D','7D','15D','30D','120D'],
+    if period=='1D':
+        x=1
+    elif period=='5D':
+        x=5
+    elif period=='7D':
+        x=7
+    elif period=='15D':
+        x=12
+    elif period=='30D':
+        x=30
+    elif period=='120D':
+        x=120
+    back=datetime.timedelta(days=x)
+    today=datetime.date(2024,6,18)
+    till = today -back
+    calls_for_rec=calls_df[(calls_df['Date']>=till)&(calls_df['To Be Taken']==1)& (~calls_df['Company'].isin(l1))]
+    rec_all_calls= {company: df.sort_values(by="Date",ascending=False).reset_index(drop=True) for company, df in calls_for_rec.groupby('Company')}
+    recommendations={}
+    # for i in rec_all_calls:
+    #     max_target=0
+    #     min_target=0
+    #     mean_target=0
+    #     max_upside=0
+    #     min_upside=0
+    #     mean_upside=0
+    #     sum_tar=0
+    #     sum_upside=0
+    #     count_tar=0
+    #     count_up=0
+    #     num_analyst=0
+    #     ltp=0
+    #     tick=''
+    #     if not rec_all_calls[i].empty:
+            
+    #         tempdf=rec_all_calls[i]
+    #         num_analyst=len(tempdf)
+    #         for index,row in tempdf.iterrows():
+    #             analyst=row["Analyst"]
+    #             tar = row["Target"]
+    #             up=row["Upside"]
+    #             tick=row["Ticker"]
+    #             #analyst_wt = analyst_rank[analyst]
+    #             analyst_wt=1
+    #             if tar:
+    #                 count_tar+=1
+    #                 sum_tar+=tar
+    #             if up:
+    #                 count_up+=1
+    #                 sum_upside+=up
+    #         ticker = yf.Ticker(tick)
+    #         #fast_info = ticker.fast_info
+    #         #ltp = fast_info['last_price']
+    #         data = ticker.history(period='1d')
+
+    #         # Extract the latest closing price
+    #         ltp = data['Close'].iloc[-1]
+
+    #         max_target=tempdf["Target"].max()
+    #         min_target=tempdf["Target"].min()
+    #         mean_target=tempdf["Target"].mean()
+    #         max_upside=tempdf["Upside"].max()
+    #         min_upside=tempdf["Upside"].min()
+    #         mean_upside=tempdf["Upside"].mean()
+    #     recommendations[i]={'Average Upside':mean_upside, 'Average Target':mean_target,'Number of recommendations': num_analyst,'LTP':ltp,'Max Target':max_target,'Minimum Target':min_target,'Max Upside':max_upside,'Minimum Upside':min_upside}
+
+    for company, tempdf in rec_all_calls.items():
+        num_analyst = int(len(tempdf))
+        max_target = round(tempdf["Target"].max(),2) if not tempdf.empty else None
+        min_target = round(tempdf["Target"].min(),2) if not tempdf.empty else None
+        mean_target = round(tempdf["Target"].mean(),2) if not tempdf.empty else None
+        max_upside =round(tempdf["Upside"].max(),2) if not tempdf.empty else None
+        min_upside = round(tempdf["Upside"].min(),2) if not tempdf.empty else None
+        mean_upside = round(tempdf["Upside"].mean(),2) if not tempdf.empty else None
+
+        ltp = 0
+        tick = tempdf.iloc[0]['Ticker'] if not tempdf.empty else None
+        if tick:
+            try:
+                ticker_info = yf.Ticker(tick)
+                data = ticker_info.history(period='1d')
+
+                if not data.empty:
+                    ltp = round(data['Close'].iloc[-1],2)
+                else:
+                    print(f"No data available for {tick}")
+                    continue  # Skip this iteration if no data is available
+
+            except Exception as e:
+                print(f"Error occurred for {tick}: {e}")
+                continue  # Skip this iteration or handle the error
+
+        recommendations[company] = {
+            'Average Upside': mean_upside,
+            'Average Target': mean_target,
+            'Number of Recommendations': num_analyst,
+            'LTP': ltp,
+            'Max Target': max_target,
+            'Minimum Target': min_target,
+            'Max Upside': max_upside,
+            'Minimum Upside': min_upside
+        }
+    recommendation_df=pd.DataFrame(recommendations).transpose()
+    recommendation_df=recommendation_df.sort_values(by=priority, ascending=False)
+    recommendation_df=recommendation_df.head(top_)
+    recommendation_df=recommendation_df.sort_values(by=sort_by,ascending=False)
+    return recommendation_df,rec_all_calls
+        
+
+
+
+            
+
