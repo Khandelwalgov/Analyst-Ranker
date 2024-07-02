@@ -46,5 +46,21 @@ def convert_date(date_str):
         month = int(parts[1])
         day = int(parts[2])
     
+    elif date_str[1]=='/' or date_str[2]=='/':
+        parts = date_str.split('/')
+        month = int(parts[0])
+        day =int(parts[1])
+        year = int(parts[2])
+
+    elif date_str[2] == '-' or date_str[1]=='-':
+        # Split the date string into its components
+        parts = date_str.split('-')
+        
+        # Extract day, month (convert from abbreviation to number), and year
+        day = int(parts[0])
+        month = month_map[parts[1]]
+        # Determine the century for the year (assuming 2000s for years 00-99)
+        year = 2000 + int(parts[2])
+    
         
     return datetime.date(year,month,day)
