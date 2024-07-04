@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify, redirect
-from main import load_data, process_data, sort_data_frame, hot_stocks_backend,recommended_stocks
+from main import load_data, process_data, sort_data_frame, hot_stocks_backend,recommended_stocks,rankgen
 from util import convert_date
 import pandas as pd
 
@@ -27,9 +27,17 @@ default_form_values_rec={
     'priority': 'Number of Recommendations',
     'period':'30D',
     'num':'10',
-    'sort-by':'Average Upside'
+    'sort-by':'Average Upside',
+    'rank-consider':'no',
+    'start-date': '2018-01-01',
+    'end-date': '2023-06-13',
+    'period-considered': '1Y'
 }
-
+default_form_values_ranker={
+    'start-date': '2018-01-01',
+    'end-date': '2023-06-13',
+    'period-considered': '1Y'
+}
 # Dropdown options for analyst and recommendations
 dropdown_options = {
     'period': ['1Y', '6M', '3M'],
@@ -39,7 +47,10 @@ dropdown_options_for_rec={
     'priority':['Number of Recommendations','Average Upside','Average Target','Max Upside','Max Target'],
     'period':['1D','5D','7D','15D','30D','120D'],
     'num':['5','10','15'],
-    'sort-by':['Number of Recommendations','Average Upside','Average Target','Max Upside','Max Target']
+    'sort-by':['Number of Recommendations','Average Upside','Average Target','Max Upside','Max Target'],
+    'period-considered': ['1Y', '6M', '3M'],
+    'weighted-options':['Weighted Target','Weighted Upside']
+
 }
 
 #Home page route 
@@ -108,7 +119,7 @@ def sort_table():
         sort_by = request.form['sort_by']
         if final_df is not None and len(final_df) > 1:
             final_df = sort_data_frame(final_df, sort_by)
-        return render_template('index.html', df=final_df, form_values=session['form_values'], dropdown_options=dropdown_options)
+        return render_template('analyst.html', df=final_df, form_values=session['form_values'], dropdown_options=dropdown_options)
 
 # To return analyst wise calls to modal
 @app.route('/get_analyst_details')
@@ -148,33 +159,57 @@ def get_stocks_details():
 #To recommendation.html
 @app.route('/recommendation')
 def recommendation():
-    global rec_all_calls
-    global dropdown_options_for_rec
-    global default_form_values_rec
-    priority=default_form_values_rec['priority']
-    period=default_form_values_rec['period']
-    num = default_form_values_rec['num']
-    sort_by = default_form_values_rec['sort-by']
-    df,rec_all_calls=recommended_stocks(sort_by,priority,period,num,calls_df,l1,analyst_rank)
-    return render_template('recommendation.html',df=df, dropdown_options_for_rec=dropdown_options_for_rec,form_values=default_form_values_rec)
+    # global rec_all_calls
+    # global dropdown_options_for_rec
+    # global default_form_values_rec
+    # global analyst_rank
+    # global analyst_dfs
+    # global company_data
+    # priority=default_form_values_rec['priority']
+    # period=default_form_values_rec['period']
+    # num = default_form_values_rec['num']
+    # sort_by = default_form_values_rec['sort-by']
+    # rank_consider = default_form_values_rec['rank-consider']
+    # start_date=default_form_values_rec['start-date']
+    # end_date= default_form_values_rec['end-date']
+    # dur=default_form_values_rec['period-considered']
+    # wtcon=True if rank_consider=="yes" else False
+    # df,rec_all_calls=recommended_stocks(start_date, end_date, dur, analyst_dfs, company_data,rank_consider,sort_by,priority,period,num,calls_df,l1,analyst_rank)
+    columns = ['Total Calls in Period: ', 'Total Successes in the period: ', 'Success %']
+    df = pd.DataFrame(columns=columns)
+    wtcon=False
+    return render_template('recommendation.html',df=df, dropdown_options_for_rec=dropdown_options_for_rec,form_values=default_form_values_rec,wtcon=wtcon)
 @app.route('/generate_rec',methods=['POST'])
 def generate_rec():
     global rec_all_calls
     global dropdown_options_for_rec
     global default_form_values_rec
+    global analyst_rank
+    global analyst_dfs
+    global company_data
     form_values_rec={
 
         'priority':request.form['priority'],
         'period':request.form['period'],
         'num':request.form['num'],
-        'sort-by': request.form['sort-by']
+        'sort-by': request.form['sort-by'],
+        'rank-consider':request.form.get('rank-consider','no'),
+        'start-date':request.form['start-date'],
+        'end-date':request.form['end-date'],
+        'period-considered':request.form['period-considered']
+
     }
     priority=form_values_rec['priority']
     sort_by=form_values_rec['sort-by']
     period=form_values_rec['period']
     num = form_values_rec['num']
-    df,rec_all_calls=recommended_stocks(sort_by,priority,period,num,calls_df,l1,analyst_rank)
-    return render_template('recommendation.html',df=df, dropdown_options_for_rec=dropdown_options_for_rec,form_values=form_values_rec)
+    rank_consider=form_values_rec['rank-consider']
+    start_date=convert_date(form_values_rec['start-date'])
+    end_date= convert_date(form_values_rec['end-date'])
+    dur=form_values_rec['period-considered']
+    wtcon=True if rank_consider=="yes" else False
+    df,rec_all_calls=recommended_stocks(start_date, end_date, dur, analyst_dfs, company_data,rank_consider,sort_by,priority,period,num,calls_df,l1,analyst_rank)
+    return render_template('recommendation.html',df=df, dropdown_options_for_rec=dropdown_options_for_rec,form_values=form_values_rec,wtcon=wtcon)
  
 
 @app.route('/get_stocks_details_for_rec')
@@ -186,6 +221,29 @@ def get_stocks_details_for_rec():
         details_html=details_df.to_html(classes='table table-striped')
         return jsonify({'html': details_html})
     return jsonify({'html': 'No details available for this company.'})
+
+@app.route('/ranker')
+def ranker():
+    columns = ['Total Calls in Period: ', 'Total Successes in the period: ', 'Success %']
+    df = pd.DataFrame(columns=columns)
+    return render_template('ranker.html',df=df,dropdown_options_for_rec=dropdown_options_for_rec,form_values=default_form_values_ranker)
+
+@app.route('/generate_rank',methods=['POST'])
+def generate_rank():
+    global analyst_rank
+    global analyst_dfs
+    global company_data
+    form_values_rank={
+        'start-date':request.form['start-date'],
+        'end-date':request.form['end-date'],
+        'period-considered':request.form['period-considered']
+    }
+    start_date=convert_date(form_values_rank['start-date'])
+    end_date= convert_date(form_values_rank['end-date'])
+    dur=form_values_rank['period-considered']
+    dict1=rankgen(start_date, end_date, dur, analyst_dfs, company_data, l1,analyst_rank)
+    df= pd.DataFrame(list(dict1.items()),columns=['Analyst','Score'])
+    return render_template('ranker.html',df=df,dropdown_options_for_rec=dropdown_options_for_rec,form_values=form_values_rank)
 
 #reset session
 @app.route('/reset_session')

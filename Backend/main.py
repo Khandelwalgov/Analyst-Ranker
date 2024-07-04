@@ -252,11 +252,16 @@ def hot_stocks_backend(calls_by_company, l1):
     
     return stocks_details_df
 
-def recommended_stocks(sort_by,priority,period,num,calls_df,l1,analyst_rank):
+def recommended_stocks(start_date, end_date, dur, analyst_dfs, company_data,rank_consider,sort_by,priority,period,num,calls_df,l1,analyst_rank):
+    dfm=pd.read_csv(r'E:\python\WithMarketCap.csv')
+    dfm.set_index('Company', inplace=True)
+
+    dfm=dfm.transpose()
+    dict1=dfm.to_dict()
     top_=int(num)
     priority=priority
     sort_by=sort_by
-    ['1D','5D','7D','15D','30D','120D'],
+    
     if period=='1D':
         x=1
     elif period=='5D':
@@ -307,8 +312,8 @@ def recommended_stocks(sort_by,priority,period,num,calls_df,l1,analyst_rank):
     #                 count_up+=1
     #                 sum_upside+=up
     #         ticker = yf.Ticker(tick)
-    #         #fast_info = ticker.fast_info
-    #         #ltp = fast_info['last_price']
+    #         fast_info = ticker.fast_info
+    #         ltp = fast_info['last_price']
     #         data = ticker.history(period='1d')
 
     #         # Extract the latest closing price
@@ -321,49 +326,141 @@ def recommended_stocks(sort_by,priority,period,num,calls_df,l1,analyst_rank):
     #         min_upside=tempdf["Upside"].min()
     #         mean_upside=tempdf["Upside"].mean()
     #     recommendations[i]={'Average Upside':mean_upside, 'Average Target':mean_target,'Number of recommendations': num_analyst,'LTP':ltp,'Max Target':max_target,'Minimum Target':min_target,'Max Upside':max_upside,'Minimum Upside':min_upside}
-
-    for company, tempdf in rec_all_calls.items():
-        num_analyst = int(len(tempdf))
-        max_target = round(tempdf["Target"].max(),2) if not tempdf.empty else None
-        min_target = round(tempdf["Target"].min(),2) if not tempdf.empty else None
-        mean_target = round(tempdf["Target"].mean(),2) if not tempdf.empty else None
-        max_upside =round(tempdf["Upside"].max(),2) if not tempdf.empty else None
-        min_upside = round(tempdf["Upside"].min(),2) if not tempdf.empty else None
-        mean_upside = round(tempdf["Upside"].mean(),2) if not tempdf.empty else None
-
-        ltp = 0
-        tick = tempdf.iloc[0]['Ticker'] if not tempdf.empty else None
-        if tick:
-            try:
-                ticker_info = yf.Ticker(tick)
-                data = ticker_info.history(period='1d')
-
-                if not data.empty:
-                    ltp = round(data['Close'].iloc[-1],2)
+    if rank_consider=='no':
+        for company, tempdf in rec_all_calls.items():
+            num_analyst = int(len(tempdf))
+            max_target = round(tempdf["Target"].max(),2) if not tempdf.empty else None
+            min_target = round(tempdf["Target"].min(),2) if not tempdf.empty else None
+            mean_target = round(tempdf["Target"].mean(),2) if not tempdf.empty else None
+            max_upside =round(tempdf["Upside"].max(),2) if not tempdf.empty else None
+            min_upside = round(tempdf["Upside"].min(),2) if not tempdf.empty else None
+            mean_upside = round(tempdf["Upside"].mean(),2) if not tempdf.empty else None
+            if company in dict1:
+                if 'Market Cap' in dict1[company]:
+                    market_cap=round(((dict1[company]['Market Cap'])/10000000),2)
                 else:
-                    print(f"No data available for {tick}")
-                    continue  # Skip this iteration if no data is available
+                    market_cap=None
+            else:
+                market_cap=None            
+            
+            
+            ltp = 0
+            tick = tempdf.iloc[0]['Ticker'] if not tempdf.empty else None
+            if tick:
+                try:
+                    ticker_info = yf.Ticker(tick)
+                    data = ticker_info.history(period='1d')
 
-            except Exception as e:
-                print(f"Error occurred for {tick}: {e}")
-                continue  # Skip this iteration or handle the error
+                    if not data.empty:
+                        ltp = round(data['Close'].iloc[-1],2)
+                    else:
+                        print(f"No data available for {tick}")
+                        continue  # Skip this iteration if no data is available
 
-        recommendations[company] = {
-            'Average Upside': mean_upside,
-            'Average Target': mean_target,
-            'Number of Recommendations': num_analyst,
-            'LTP': ltp,
-            'Max Target': max_target,
-            'Minimum Target': min_target,
-            'Max Upside': max_upside,
-            'Minimum Upside': min_upside
-        }
+                except Exception as e:
+                    print(f"Error occurred for {tick}: {e}")
+                    continue  # Skip this iteration or handle the error
+            if mean_upside>=10:
+                recommendations[company] = {
+                    'Average Upside': mean_upside,
+                    'Average Target': mean_target,
+                    'Number of Recommendations': num_analyst,
+                    'LTP': ltp,
+                    'Max Target': max_target,
+                    'Minimum Target': min_target,
+                    'Max Upside': max_upside,
+                    'Minimum Upside': min_upside,
+                    'Market Cap':market_cap
+                }
+    elif rank_consider=='yes':
+        analyst_rank =rankgen(start_date, end_date, dur, analyst_dfs, company_data, l1,analyst_rank)
+        for company, tempdf in rec_all_calls.items():
+            num_analyst = int(len(tempdf))
+            max_target = round(tempdf["Target"].max(),2) if not tempdf.empty else None
+            min_target = round(tempdf["Target"].min(),2) if not tempdf.empty else None
+            mean_target = round(tempdf["Target"].mean(),2) if not tempdf.empty else None
+            max_upside =round(tempdf["Upside"].max(),2) if not tempdf.empty else None
+            min_upside = round(tempdf["Upside"].min(),2) if not tempdf.empty else None
+            mean_upside = round(tempdf["Upside"].mean(),2) if not tempdf.empty else None
+            if company in dict1:
+                if 'Market Cap' in dict1[company]:
+                    market_cap=round(((dict1[company]['Market Cap'])/10000000),2)
+                else:
+                    market_cap=None
+            else:
+                market_cap=None
+            ltp = 0
+            tick = tempdf.iloc[0]['Ticker'] if not tempdf.empty else None
+            if tick:
+                try:
+                    ticker_info = yf.Ticker(tick)
+                    data = ticker_info.history(period='1d')
+
+                    if not data.empty:
+                        ltp = round(data['Close'].iloc[-1],2)
+                    else:
+                        print(f"No data available for {tick}")
+                        continue  # Skip this iteration if no data is available
+
+                except Exception as e:
+                    print(f"Error occurred for {tick}: {e}")
+                    continue  # Skip this iteration or handle the error
+            weighted_upside_sum=0
+            weighted_target_sum=0
+            cumulative_wt=0
+            print(analyst_rank)
+            for index, row in tempdf.iterrows():
+                analyst=row['Analyst'] 
+                if analyst in analyst_rank:
+                    w=analyst_rank[analyst]
+                else:
+                    w=0
+
+                cumulative_wt+=w
+                weighted_target_sum+=(w)*(float(row["Target"]))
+                weighted_upside_sum+=(w)*(float(row["Upside"]))
+            weighted_upside =round(weighted_upside_sum/cumulative_wt,2)if cumulative_wt!=0 else 0
+            weighted_target=round(weighted_target_sum/cumulative_wt,2) if cumulative_wt!=0 else 0
+            if mean_upside>=10:
+              recommendations[company] = {
+                    'Average Upside': mean_upside,
+                    'Average Target': mean_target,
+                    'Number of Recommendations': num_analyst,
+                    'LTP': ltp,
+                    'Max Target': max_target,
+                    'Minimum Target': min_target,
+                    'Max Upside': max_upside,
+                    'Minimum Upside': min_upside,
+                    'Weighted Upside':weighted_upside,
+                    'Weighted Target':weighted_target,
+                    'Market Cap':market_cap
+                }
+
     recommendation_df=pd.DataFrame(recommendations).transpose()
     recommendation_df=recommendation_df.sort_values(by=priority, ascending=False)
     recommendation_df=recommendation_df.head(top_)
     recommendation_df=recommendation_df.sort_values(by=sort_by,ascending=False)
     return recommendation_df,rec_all_calls
         
+def rankgen(start_date, end_date, dur, analyst_dfs, company_data, l1,analyst_rank):
+    df_rank_process,x,y=process_data(start_date, end_date, dur, 'All', l1, analyst_dfs, company_data)
+    sort_data_frame(df_rank_process, "Success %")
+    df_rank_process=revert_indian_number_format(df_rank_process, ["Total Calls in Period: ", "Total Successes in the period: "])
+    max_calls = df_rank_process["Total Calls in Period: "].max()
+    df_rank_process=df_rank_process.transpose()
+    dict1=df_rank_process.to_dict()
+    # for i in dict1:
+    #     temp_df1=dict1[i]
+    #     temp_df2=analyst_dfs[i]
+    #     if not temp_df1.empty and not temp_df2.empty:
+    count =0
+    n=len(dict1)
+    for i in dict1:
+        x= round((n-count)/n,4)
+        count+=1
+        analyst_rank[i]=x
+
+    return analyst_rank
 
 
 

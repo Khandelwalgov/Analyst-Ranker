@@ -32,11 +32,13 @@ th, td {
     text-align: left;
 }
 td{
-    background-color: aqua;
+    color: black ;
+    background-color: #77a6f7;
+    font-weight: bolder;
 }
 th {
-    color:white;
-    background-color: #6326ff;
+    color: #FFFFFF;
+    background-color: #00887a;
 }
 .container{
     display:flex;
@@ -125,14 +127,14 @@ label{
 */
 /* Add a black background color to the top navigation */
 .topnav {
-    background-color: #333;
+    background-color: #d3e3fc;
     overflow: hidden;
   }
   
   /* Style the links inside the navigation bar */
   .topnav a {
     float: left;
-    color: #f2f2f2;
+    color: #00887a;
     text-align: center;
     padding: 14px 16px;
     text-decoration: none;
@@ -141,12 +143,27 @@ label{
   
   /* Change the color of links on hover */
   .topnav a:hover {
-    background-color: #ddd;
+    background-color: #FFFFFF;
     color: black;
   }
   
   /* Add a color to the active/current link */
   .topnav a.active {
-    background-color: #04AA6D;
+    background-color: #77a6f7;
     color: white;
+  }
+  #content-style{
+    display:flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding:0px;
+    
+  }
+  #content{
+    display:flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding:10px;
   }

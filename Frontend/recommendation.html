@@ -8,6 +8,7 @@
     <a href={{url_for('analyst')}}>Analyst View</a>
     <a href={{url_for('stocks')}}>Hot Stocks</a>
     <a class = "active" href="{{url_for('recommendation')}}">Recommendations</a>
+    <a href="{{url_for('ranker')}}">Rank view</a>
     <a href="#about">About</a>
   </div>
 <div class="container">
@@ -20,12 +21,16 @@
     {% for option in dropdown_options_for_rec['priority'] %}
         <option value="{{ option }}" {% if form_values['priority'] == option %}selected{% endif %}>{{ option }}</option>
     {% endfor %}
+    {% for option in dropdown_options_for_rec['weighted-options'] %}
+        <option value="{{ option }}" {% if form_values['priority'] == option %}selected{% endif %} {% if form_values['rank-consider'] == 'no' %}disabled{% endif %}>{{ option }}</option>
+    {% endfor %}
 </select>
 <label for="period">Period</label>
 <select id ="period" name ="period">
     {% for option in dropdown_options_for_rec['period'] %}
         <option value="{{ option }}" {% if form_values['period'] == option %}selected{% endif %}>{{ option }}</option>
     {% endfor %}
+
 </select>
 <label for="num">Number of Stocks</label>
 <select id ="num" name ="num">
@@ -38,8 +43,82 @@
     {% for option in dropdown_options_for_rec['sort-by'] %}
         <option value="{{ option }}" {% if form_values['sort-by'] == option %}selected{% endif %}>{{ option }}</option>
     {% endfor %}
+    {% for option in dropdown_options_for_rec['weighted-options'] %}
+        <option value="{{ option }}" {% if form_values['sort-by'] == option %}selected{% endif %} {% if form_values['rank-consider'] == 'no' %}disabled{% endif %} >{{ option }}</option>
+    {% endfor %}
 </select>
+<label for="rank-consider">Weighted Averages Using Rank</label>
+<input type ="checkbox" id ="rank-consider" name="rank-consider" value ="yes" {% if form_values['rank-consider'] == 'yes' %}checked{% endif %}/>
+<br/>
+<div id="content-style">
+<div id="content"
+    {% if form_values['rank-consider'] != 'yes' %}
+    style="pointer-events: none; opacity: 0.5;"
+    {% endif %}>
+<h4>Ranking generation conditions</h4>
+<div>
+<label for="start-date">Start Date:</label>
+    <input type="date" id="start-date" name="start-date" value="{{ form_values['start-date'] }}" required>
+    
+    <label for="end-date">End Date:</label>
+    <input type="date" id="end-date" name="end-date" value="{{ form_values['end-date'] }}" required>
+    
+    <label for="period-considered">Period to be considered</label>
+    <select id="period-considered" name="period-considered">
+        {% for option in dropdown_options_for_rec['period-considered'] %}
+        <option value="{{ option }}" {% if form_values['period-considered'] == option %}selected{% endif %}>{{ option }}</option>
+        {% endfor %}
+    </select>
+</div>
+</div>
 <input type="submit" value="Generate" id="submit-button">
+</div>
+<script>
+    var checkbox = document.getElementById('rank-consider');
+    var contentDiv = document.getElementById('content');
+    var prioritySelect =document.getElementById('priority')
+    var sortSelect = document.getElementById('sort-by')
+    checkbox.addEventListener('change', function() {
+        if (checkbox.checked) {
+            // Checkbox is checked, remove disabled styles
+            optionsPriority =prioritySelect.options;
+            optionsSort=sortSelect.options;
+            for (var i = 0; i < optionsPriority.length; i++){
+                if (optionsPriority[i].value == 'Weighted Target' || optionsPriority[i].value == 'Weighted Upside') {
+                    optionsPriority[i].disabled = false;
+                } 
+
+            }
+            for (var i = 0; i < optionsSort.length; i++){
+                if (optionsSort[i].value == 'Weighted Target' || optionsSort[i].value == 'Weighted Upside') {
+                    optionsSort[i].disabled = false;
+                } 
+
+            }
+
+            contentDiv.style.pointerEvents = 'auto';
+            contentDiv.style.opacity = '1';
+        } else {
+            // Checkbox is unchecked, disable interaction with content
+            contentDiv.style.pointerEvents = 'none';
+            contentDiv.style.opacity = '0.5';
+            optionsPriority =prioritySelect.options;
+            optionsSort=sortSelect.options;
+            for (var i = 0; i < optionsPriority.length; i++){
+                if (optionsPriority[i].value == 'Weighted Target' || optionsPriority[i].value == 'Weighted Upside') {
+                    optionsPriority[i].disabled = true;
+                } 
+
+            }
+            for (var i = 0; i < optionsSort.length; i++){
+                if (optionsSort[i].value == 'Weighted Target' || optionsSort[i].value == 'Weighted Upside') {
+                    optionsSort[i].disabled = true;
+                } 
+
+            }
+        }
+    });
+</script>
 </form>
 {% endblock %}
 
@@ -54,10 +133,15 @@
               <th>Average Target</th>
               <th>Number of Recommendations</th>
               <th>LTP</th>
+              <th>Market Cap</th>
               <th>Max Target</th>
               <th>Min Target</th>
               <th>Max Upside</th>
               <th>Min Upside</th>
+              {% if wtcon %}
+              <th>Weighted Target</th>
+              <th>Weighted Upside</th>
+              {% endif %}
               <th>Details</th>
           </tr>
       </thead>
@@ -69,10 +153,15 @@
               <td>{{ row['Average Target'] }}</td>
               <td>{{ row['Number of Recommendations'] }}</td>
               <td>{{ row['LTP'] }}</td>
+              <td>{{row['Market Cap']}}</td>
               <td>{{ row['Max Target'] }}</td>
               <td>{{ row['Minimum Target'] }}</td>
               <td>{{ row['Max Upside'] }}</td>
               <td>{{ row['Minimum Upside'] }}</td>
+              {% if wtcon %}
+              <td>{{ row['Weighted Target'] }}</td>
+              <td>{{ row['Weighted Upside'] }}</td>
+              {% endif %}
               <td><button class="eye-button" data-toggle="modal" data-target="#detailsModal" data-company="{{ row.name }}">&#128065;</button></td>
           </tr>
           {% endfor %}

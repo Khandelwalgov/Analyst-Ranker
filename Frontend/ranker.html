@@ -5,10 +5,10 @@
 {% block navigationbar %}
 <div class="topnav">
     <a href={{url_for('index')}}>Home</a>
-    <a class = "active" href={{url_for('analyst')}}>Analyst View</a>
+    <a href={{url_for('analyst')}}>Analyst View</a>
     <a href={{url_for('stocks')}}>Hot Stocks</a>
     <a href="{{url_for('recommendation')}}">Recommendations</a>
-    <a href="{{url_for('ranker')}}">Rank view</a>
+    <a class = "active" href="{{url_for('ranker')}}">Rank view</a>
     <a href="#about">About</a>
     </div>
 <div class="container">
@@ -16,65 +16,46 @@
 
 
 {% block forms %}
-<form action="/generate_data" method="POST">
+<form action="/generate_rank" method="POST">
+    <div id="content-style">
+    <div id="content">
+    <div>
     <label for="start-date">Start Date:</label>
-    <input type="date" id="start-date" name="start-date" value="{{ form_values['start-date'] }}" required>
-    
-    <label for="end-date">End Date:</label>
-    <input type="date" id="end-date" name="end-date" value="{{ form_values['end-date'] }}" required>
-    
-    <label for="period">Period:</label>
-    <select id="period" name="period">
-        {% for option in dropdown_options['period'] %}
-        <option value="{{ option }}" {% if form_values['period'] == option %}selected{% endif %}>{{ option }}</option>
-        {% endfor %}
-    </select>
-
-    <label for="analyst">Analyst:</label>
-    <select id="analyst" name="analyst">
-        {% for option in dropdown_options['analyst'] %}
-        <option value="{{ option }}" {% if form_values['analyst'] == option %}selected{% endif %}>{{ option }}</option>
-        {% endfor %}
-    </select>
-    
+        <input type="date" id="start-date" name="start-date" value="{{ form_values['start-date'] }}" required>
+        
+        <label for="end-date">End Date:</label>
+        <input type="date" id="end-date" name="end-date" value="{{ form_values['end-date'] }}" required>
+        
+        <label for="period-considered">Period to be considered for success</label>
+        <select id="period-considered" name="period-considered">
+            {% for option in dropdown_options_for_rec['period-considered'] %}
+            <option value="{{ option }}" {% if form_values['period-considered'] == option %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    </div>
     <input type="submit" value="Generate" id="submit-button">
-</form>
-
-<form id="sort-form" method="POST" action="/sort_table">
-    <label for="sort-by">Sort By:</label>
-    <select name="sort_by" id="sort-by">
-        <option value="Success %">Success %</option>
-        <option value="Total Calls in Period: ">Total Calls</option>
-        <option value="Total Successes in the period: ">Total Successes</option>
-    </select>
-    <button type="submit" id="submit-button">Sort</button>
+    </div>
 </form>
 {% endblock %}   
 
 {% block df %}
-<h2>DataFrame Display ( calls from 2018 onwards only)</h2>
 <div class="container">
     <table class="table table-striped">
         <thead>
             <tr>
+                <th>Rank</th>
                 <th>Analyst</th>
-                <th>Total Calls in Period</th>
-                <th>Total Successes in the period</th>
-                <th>Success %</th>
-                <th>Average days taken by successful calls</th> 
-                <th>Number of unique stocks</th>
+                <th>Score</th>
                 <th>Details</th>
             </tr>
         </thead>
         <tbody>
             {% for index, row in df.iterrows() %}
             <tr>
-                <th>{{ row.name }}</tb>
-                <td>{{ row['Total Calls in Period: '] }}</td>
-                <td>{{ row['Total Successes in the period: '] }}</td>
-                <td>{{ row['Success %'] }}</td>
-               <td>{{ row['Average days taken by successful calls']}}</td> 
-                <td class ="hover-target" data-details="{{row.name}}">{{ row['No. of Unique Stocks'] }}</td>               
+                <th>{{ row.name +1 }}</th>
+                <td>{{ row['Analyst'] }}</td>
+                <td>{{ row['Score'] }}</td>
                 <td><button class="eye-button" data-toggle="modal" data-target="#detailsModal" data-analyst="{{ row.name }}">&#128065;</button></td>
             </tr>
             {% endfor %}
