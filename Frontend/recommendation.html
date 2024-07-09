@@ -16,7 +16,7 @@
 
 {% block forms %}
 <form action="/generate_rec" method="POST">
-<label for="priority">Prioritise</label>
+<!-- <label for="priority">Prioritise</label>
 <select id ="priority" name ="priority">
     {% for option in dropdown_options_for_rec['priority'] %}
         <option value="{{ option }}" {% if form_values['priority'] == option %}selected{% endif %}>{{ option }}</option>
@@ -24,7 +24,7 @@
     {% for option in dropdown_options_for_rec['weighted-options'] %}
         <option value="{{ option }}" {% if form_values['priority'] == option %}selected{% endif %} {% if form_values['rank-consider'] == 'no' %}disabled{% endif %}>{{ option }}</option>
     {% endfor %}
-</select>
+</select> -->
 <label for="period">Period</label>
 <select id ="period" name ="period">
     {% for option in dropdown_options_for_rec['period'] %}
@@ -45,6 +45,24 @@
     {% endfor %}
     {% for option in dropdown_options_for_rec['weighted-options'] %}
         <option value="{{ option }}" {% if form_values['sort-by'] == option %}selected{% endif %} {% if form_values['rank-consider'] == 'no' %}disabled{% endif %} >{{ option }}</option>
+    {% endfor %}
+</select>
+<label for="upside-factor-weight">Upside Factor Weight</label>
+<select id ="upside-factor-weight" name ="upside-factor-weight">
+    {% for option in dropdown_options_for_rec['upside-factor-weight'] %}
+        <option value="{{ option }}" {% if form_values['upside-factor-weight'] == option %}selected{% endif %}>{{ option }}</option>
+    {% endfor %}
+</select>
+<label for ="minimum-upside-current">Minimum Current Upside</label>
+<select id ="minimum-upside-current" name ="minimum-upside-current">
+    {% for option in dropdown_options_for_rec['minimum-upside-current'] %}
+        <option value="{{ option }}" {% if form_values['minimum-upside-current'] == option %}selected{% endif %}>{{ option }}</option>
+    {% endfor %}
+</select>
+<label for ="market-cap">Minimum Current Upside</label>
+<select id ="market-cap" name ="market-cap">
+    {% for option in dropdown_options_for_rec['market-cap'] %}
+        <option value="{{ option }}" {% if form_values['market-cap'] == option %}selected{% endif %}>{{ option }}</option>
     {% endfor %}
 </select>
 <label for="rank-consider">Weighted Averages Using Rank</label>
@@ -124,49 +142,107 @@
 
 {% block df %}
 <div class="container">
-    <h1>Recommendations</h1>
+    <form>
+    <label for="Collapse target">Collapse target</label>
+    <input type="checkbox" name="Collapse target" id="Collapse target" checked/>
+    <label for="Collapse upside">Collapse Upside(Reco)</label>
+    <input type="checkbox" name="Collapse upside" id="Collapse upside" checked/>
+    <label for="Collapse upside curr">Collapse Upside(Current)</label>
+    <input type="checkbox" name="Collapse upside curr" id="Collapse upside curr" checked/>
+    <label for="Collapse computations">Collapse computations</label>
+    <input type="checkbox" name="Collapse computations" id="Collapse computations" checked/>
+</form>
   <table class="table table-striped">
       <thead>
           <tr>
+              <th>S. No.</th>
               <th>Company</th>
-              <th>Average Upside</th>
-              <th>Average Target</th>
-              <th>Number of Recommendations</th>
-              <th>LTP</th>
-              <th>Market Cap</th>
-              <th>Max Target</th>
-              <th>Min Target</th>
-              <th>Max Upside</th>
-              <th>Min Upside</th>
+              <th>Num of <br/>Recs</th>
               {% if wtcon %}
-              <th>Weighted Target</th>
-              <th>Weighted Upside</th>
+              <th>Weighted Upside<br/>(Current) %</th>
               {% endif %}
+              {% if wtcon %}
+              <th>Weighted Target<br/>(INR)</th>
+              {% endif %}
+              <th>LTP<br/>(INR)</th>
+              <th>Max Allowed Trade Value (Cr.)</th>
+              <th>Average Traded Value (Cr.)</th>   
+              
+              <th>Mkt Cap<br/>(Cr.)</th>
+              
+              <th class="target">Avg Target<br/>(INR)</th>
+              <th class="target">Max Target<br/>(INR)</th>
+              <th class="target">Min Target<br/>(INR)</th>
+             
+              
+              <th class="upside-r">Avg Upside<br/>(Reco Date)</th>
+              <th class="upside-r">Max Upside<br/>(Reco Date)</th>
+              <th class="upside-r">Min Upside<br/>(Reco Date)</th>
+              {% if wtcon %}
+              <th class="upside-r">Weighted Upside<br/>(Reco Date)</th>
+              {% endif %}
+              <th class="upside-c">Avg Upside<br/>(Current)</th>
+              <th class="upside-c">Max Upside<br/>(Current)</th>
+              <th class="upside-c">Min Upside<br/>(Current)</th>
+              
+              {% if wtcon %}
+              <th class="deets">Wt. Num<br/>of Recs</th>
+              {% endif %}
+              <th class="deets"># Calls Factor</th>
+              <th class="deets">Wt. Upside Factor</th>
+              <th class="deets">Final Factor</th>
               <th>Details</th>
           </tr>
       </thead>
+      {% set counter = 1 %} 
       <tbody>
+        
           {% for index, row in df.iterrows() %}
           <tr>
+              <th>{{loop.index}}</th>
               <th>{{ row.name }}</th>
-              <td>{{ row['Average Upside'] }}</td>
-              <td>{{ row['Average Target'] }}</td>
               <td>{{ row['Number of Recommendations'] }}</td>
-              <td>{{ row['LTP'] }}</td>
-              <td>{{row['Market Cap']}}</td>
-              <td>{{ row['Max Target'] }}</td>
-              <td>{{ row['Minimum Target'] }}</td>
-              <td>{{ row['Max Upside'] }}</td>
-              <td>{{ row['Minimum Upside'] }}</td>
+              {% if wtcon %}
+              <td>{{ row['Weighted Upside Current'] }}</td>
+              {% endif %}   
               {% if wtcon %}
               <td>{{ row['Weighted Target'] }}</td>
-              <td>{{ row['Weighted Upside'] }}</td>
               {% endif %}
+              <td>{{ row['LTP'] }}</td>
+              <td>{{row['Recommended Trade Value']}}</td>
+              <td>{{row['Average Traded Value']}}</td>
+              
+              <td>{{row['Market Cap']}}</td>
+              <td class="target">{{ row['Average Target'] }}</td>
+              <td class="target">{{ row['Max Target'] }}</td>
+              <td class="target">{{ row['Minimum Target'] }}</td>
+             
+              <td class="upside-r">{{ row['Average Upside'] }}</td>
+              <td class="upside-r">{{ row['Max Upside'] }}</td>
+              <td class="upside-r">{{ row['Minimum Upside'] }}</td>
+              {% if wtcon %}
+              <td class="upside-r">{{ row['Weighted Upside'] }}</td>
+              {% endif %}
+              <td class="upside-c">{{ row['Average Upside Current'] }}</td>
+              <td class="upside-c">{{ row['Max Upside Current'] }}</td>
+              <td class="upside-c">{{ row['Minimum Upside Current'] }}</td>
+              
+              {% if wtcon %}
+              <td class="deets">{{ row['Weighted Number of Calls'] }}</td>
+              {% endif %}
+              <td class="deets">{{row['Norm Wt Num Calls']}}</td>
+              <td class="deets">{{row['Norm Wt Avg Upside Curr']}}</td>
+              <td class="deets">{{row['Final Factor']}}</td>
               <td><button class="eye-button" data-toggle="modal" data-target="#detailsModal" data-company="{{ row.name }}">&#128065;</button></td>
           </tr>
+
+          {% set counter = counter + 1 %}
           {% endfor %}
       </tbody>
   </table>
+  <form action="/show_full_table" method="POST">
+    <input type="submit" value="Show Full Table" id="submit-button">
+  </form>
 </div>
 <div id="detailsModal" class="modal">
   <div class="modal-content">
@@ -204,6 +280,65 @@
       });
 
   });
+  checkbox_upr=document.getElementById('Collapse upside')
+  checkbox_computations=document.getElementById('Collapse computations')
+  checkbox_upc=document.getElementById('Collapse upside curr')
+  checkbox_tar=document.getElementById('Collapse target')
+  upr=document.getElementsByClassName('upside-r')
+  upc=document.getElementsByClassName('upside-c')
+  computations=document.getElementsByClassName('deets')
+  tar=document.getElementsByClassName('target')
+  checkbox_upr.addEventListener('change',function(){
+  if(checkbox_upr.checked){
+    for (var i = 0; i < upr.length; i++){
+        upr[i].style.display='none';
+    }
+  }
+  else{
+    for (var i = 0; i < upr.length; i++){
+        upr[i].style.display='table-cell';
+    }
+  }
+});
+checkbox_upc.addEventListener('change',function(){
+  if(checkbox_upc.checked){
+    for (var i = 0; i < upc.length; i++){
+        upc[i].style.display='none';
+    }
+  }
+  else{
+    for (var i = 0; i < upc.length; i++){
+        upc[i].style.display='table-cell';
+    }
+  }
+});
+checkbox_computations.addEventListener('change',function(){
+  if(checkbox_computations.checked){
+    for (var i = 0; i < computations.length; i++){
+        computations[i].style.display='none';
+    }
+  }
+  else{
+    for (var i = 0; i < computations.length; i++){
+        computations[i].style.display='table-cell';
+    }
+  }
+});
+checkbox_tar.addEventListener('change',function(){
+  if(checkbox_tar.checked){
+    for (var i = 0; i < tar.length; i++){
+        tar[i].style.display='none';
+    }
+  }
+  else{
+    for (var i = 0; i < tar.length; i++){
+        tar[i].style.display='table-cell';
+    }
+  }
+});
+
+
+
 </script>
 {% endblock %}
 </div>

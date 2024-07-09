@@ -1,24 +1,29 @@
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify, redirect
 from main import load_data, process_data, sort_data_frame, hot_stocks_backend,recommended_stocks,rankgen
-from util import convert_date
+from util import convert_date, format_numbers_to_indian_system
 import pandas as pd
 
 app = Flask(__name__)
 app.secret_key = 'koinahibtayega'  # Needed to encrypt session data
-
 # Global definition of l1, analysts, and company data to ensure they are loaded only once, saving time
-l1, analyst_dfs, company_data,list_of_unique_analysts, calls_by_company, calls_df = load_data()
 analyst_rank={}
 # Global definition of final_df to make sorting easier as it won't have to be processed again every time sorting has to be done
 columns = ['Total Calls in Period: ', 'Total Successes in the period: ', 'Success %']
 final_df = pd.DataFrame(columns=columns)
+recommendation_df=pd.DataFrame(columns=columns)
+form_values_rec={}
 unique_company={}
 calls_to_be_processed= {}
 rec_all_calls={}
-
+l1, analyst_dfs, company_data,list_of_unique_analysts, calls_by_company, calls_df = load_data()
+dropdown_options = {
+'period': ['1Y', '6M', '3M'],
+'analyst': list_of_unique_analysts
+    }
+calls_df=pd.DataFrame(columns=columns)
 # Default values for the forms
 default_form_values = {
-    'start-date': '2000-01-01',
+    'start-date': '2018-01-01',
     'end-date': '2023-06-13',
     'period': '1Y',
     'analyst': 'All'
@@ -26,36 +31,38 @@ default_form_values = {
 default_form_values_rec={
     'priority': 'Number of Recommendations',
     'period':'30D',
-    'num':'10',
-    'sort-by':'Average Upside',
-    'rank-consider':'no',
-    'start-date': '2018-01-01',
+    'num':'All',
+    'sort-by':'Final Factor',
+    'rank-consider':'yes',
+    'start-date': '2021-01-01',
     'end-date': '2023-06-13',
-    'period-considered': '1Y'
+    'period-considered': '1Y',
+    'upside-factor-weight':'50%',
+    'minimum-upside-current':'10%',
+    'market-cap':'All'
 }
 default_form_values_ranker={
-    'start-date': '2018-01-01',
+    'start-date': '2021-01-01',
     'end-date': '2023-06-13',
     'period-considered': '1Y'
 }
 # Dropdown options for analyst and recommendations
-dropdown_options = {
-    'period': ['1Y', '6M', '3M'],
-    'analyst': list_of_unique_analysts
-}
+
 dropdown_options_for_rec={
     'priority':['Number of Recommendations','Average Upside','Average Target','Max Upside','Max Target'],
     'period':['1D','5D','7D','15D','30D','120D'],
-    'num':['5','10','15'],
-    'sort-by':['Number of Recommendations','Average Upside','Average Target','Max Upside','Max Target'],
+    'num':['5','10','20','30','All'],
+    'sort-by':['Number of Recommendations','Average Upside','Average Target','Max Upside','Max Target','Norm Wt Num Calls','Norm Wt Avg Upside Curr','Final Factor','Max Upside Current','Average Upside Current'],
     'period-considered': ['1Y', '6M', '3M'],
-    'weighted-options':['Weighted Target','Weighted Upside']
-
+    'weighted-options':['Weighted Target','Weighted Upside','Weighted Upside Current','Weighted Number of Calls'],
+    'upside-factor-weight':['100%','90%','80%','70%','60%','50%','40%','30%','20%','10%','0%'],
+    'minimum-upside-current':['0%','10%','15%','20%'],
+    'market-cap':['0-500','500-2k','2k-5k','5k-20k','20k+','All']
 }
-
 #Home page route 
 @app.route('/')
 def index():
+    global l1, analyst_dfs, company_data,list_of_unique_analysts, calls_by_company, calls_df, dropdown_options
     session.clear()  
     global default_form_values
     global final_df
@@ -64,6 +71,11 @@ def index():
     'end-date': '2023-06-13',
     'period': '1Y',
     'analyst': 'All'
+    }
+    l1, analyst_dfs, company_data,list_of_unique_analysts, calls_by_company, calls_df = load_data()
+    dropdown_options = {
+    'period': ['1Y', '6M', '3M'],
+    'analyst': list_of_unique_analysts
     }
     session['form_values'] = default_form_values
     return render_template('index.html')
@@ -126,7 +138,12 @@ def sort_table():
 def get_analyst_details():
     analyst = request.args.get('analyst')
     if analyst in calls_to_be_processed:
-        details_df = calls_to_be_processed[analyst]
+        details_df = calls_to_be_processed[analyst].copy()
+        details_df.drop(['Remarks(if any)','To Be Taken'], axis=1,inplace=True)
+        details_df['Market Cap']=pd.to_numeric(details_df['Market Cap'],errors='coerce')
+        details_df['Market Cap']=details_df['Market Cap']/(10**7)
+        details_df['Target']=details_df['Target'].round(1)
+        details_df=format_numbers_to_indian_system(details_df,['Market Cap'])
         details_html = details_df.to_html(classes='table table-striped')
         return jsonify({'html': details_html})
     return jsonify({'html': 'No details available for this analyst.'})
@@ -151,7 +168,11 @@ def stocks():
 def get_stocks_details():
     company = request.args.get('company')
     if company in calls_by_company:
-        details_df=calls_by_company[company]
+        details_df=calls_by_company[company].copy()
+        details_df.drop(['Remarks(if any)','To Be Taken'], axis=1,inplace=True)
+        details_df['Market Cap']=pd.to_numeric(details_df['Market Cap'],errors='coerce')
+        details_df['Market Cap']=details_df['Market Cap']/(10**7)
+        details_df=format_numbers_to_indian_system(details_df,['Market Cap'])
         details_html=details_df.to_html(classes='table table-striped')
         return jsonify({'html': details_html})
     return jsonify({'html': 'No details available for this company.'})
@@ -159,6 +180,7 @@ def get_stocks_details():
 #To recommendation.html
 @app.route('/recommendation')
 def recommendation():
+    global recommendation_df
     # global rec_all_calls
     # global dropdown_options_for_rec
     # global default_form_values_rec
@@ -175,10 +197,10 @@ def recommendation():
     # dur=default_form_values_rec['period-considered']
     # wtcon=True if rank_consider=="yes" else False
     # df,rec_all_calls=recommended_stocks(start_date, end_date, dur, analyst_dfs, company_data,rank_consider,sort_by,priority,period,num,calls_df,l1,analyst_rank)
-    columns = ['Total Calls in Period: ', 'Total Successes in the period: ', 'Success %']
-    df = pd.DataFrame(columns=columns)
-    wtcon=False
-    return render_template('recommendation.html',df=df, dropdown_options_for_rec=dropdown_options_for_rec,form_values=default_form_values_rec,wtcon=wtcon)
+    # columns = ['Total Calls in Period: ', 'Total Successes in the period: ', 'Success %']
+    # df = pd.DataFrame(columns=columns)
+    wtcon=True
+    return render_template('recommendation.html',df=recommendation_df, dropdown_options_for_rec=dropdown_options_for_rec,form_values=default_form_values_rec,wtcon=wtcon)
 @app.route('/generate_rec',methods=['POST'])
 def generate_rec():
     global rec_all_calls
@@ -187,19 +209,24 @@ def generate_rec():
     global analyst_rank
     global analyst_dfs
     global company_data
+    global recommendation_df
+    global form_values_rec
     form_values_rec={
 
-        'priority':request.form['priority'],
+        #'priority':request.form['priority'],
         'period':request.form['period'],
         'num':request.form['num'],
         'sort-by': request.form['sort-by'],
         'rank-consider':request.form.get('rank-consider','no'),
         'start-date':request.form['start-date'],
         'end-date':request.form['end-date'],
-        'period-considered':request.form['period-considered']
-
+        'period-considered':request.form['period-considered'],
+        'upside-factor-weight':request.form['upside-factor-weight'],
+        'minimum-upside-current':request.form['minimum-upside-current'],
+        'market-cap':request.form['market-cap']
     }
-    priority=form_values_rec['priority']
+    #priority=form_values_rec['priority']
+    priority='Number of Recommendations'
     sort_by=form_values_rec['sort-by']
     period=form_values_rec['period']
     num = form_values_rec['num']
@@ -207,9 +234,17 @@ def generate_rec():
     start_date=convert_date(form_values_rec['start-date'])
     end_date= convert_date(form_values_rec['end-date'])
     dur=form_values_rec['period-considered']
+    upside_factor_weight=form_values_rec['upside-factor-weight']
+    upside_filter=form_values_rec['minimum-upside-current']
     wtcon=True if rank_consider=="yes" else False
-    df,rec_all_calls=recommended_stocks(start_date, end_date, dur, analyst_dfs, company_data,rank_consider,sort_by,priority,period,num,calls_df,l1,analyst_rank)
-    return render_template('recommendation.html',df=df, dropdown_options_for_rec=dropdown_options_for_rec,form_values=form_values_rec,wtcon=wtcon)
+    mcap=form_values_rec['market-cap']
+    recommendation_df,rec_all_calls=recommended_stocks(mcap,upside_filter,upside_factor_weight,start_date, end_date, dur, analyst_dfs, company_data,rank_consider,sort_by,priority,period,num,calls_df,l1,analyst_rank)
+    if num =='All':
+        return render_template('recommendation.html',df=recommendation_df, dropdown_options_for_rec=dropdown_options_for_rec,form_values=form_values_rec,wtcon=wtcon)
+    else:
+        temp_df=recommendation_df.head(int(num))
+        return render_template('recommendation.html',df=temp_df, dropdown_options_for_rec=dropdown_options_for_rec,form_values=form_values_rec,wtcon=wtcon)
+
  
 
 @app.route('/get_stocks_details_for_rec')
@@ -217,11 +252,29 @@ def get_stocks_details_for_rec():
     global rec_all_calls
     company = request.args.get('company')
     if company in rec_all_calls:
-        details_df=rec_all_calls[company]
+        details_df=rec_all_calls[company].copy()
+        details_df.drop(['Remarks(if any)','To Be Taken'], axis=1,inplace=True)
+        details_df['Market Cap']=pd.to_numeric(details_df['Market Cap'],errors='coerce')
+        details_df['Market Cap']=details_df['Market Cap']/(10**7)
+        details_df=format_numbers_to_indian_system(details_df,['Market Cap'])
         details_html=details_df.to_html(classes='table table-striped')
         return jsonify({'html': details_html})
     return jsonify({'html': 'No details available for this company.'})
+@app.route('/show_full_table',methods=['POST'])
+def show_full_rec_table():
+    global rec_all_calls
+    global dropdown_options_for_rec
+    global default_form_values_rec
+    global analyst_rank
+    global analyst_dfs
+    global company_data
+    global recommendation_df
+    global form_values_rec
 
+    rank_consider=form_values_rec['rank-consider']
+
+    wtcon=True if rank_consider=="yes" else False
+    return render_template('recommendation.html',df=recommendation_df, dropdown_options_for_rec=dropdown_options_for_rec,form_values=form_values_rec,wtcon=wtcon)
 @app.route('/ranker')
 def ranker():
     columns = ['Total Calls in Period: ', 'Total Successes in the period: ', 'Success %']

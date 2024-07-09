@@ -167,3 +167,9 @@ label{
     align-items: center;
     padding:10px;
   }
+  .upside-r,
+  .upside-c,
+  .deets,
+  .target{
+    display:none;
+  }

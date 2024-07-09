@@ -1,17 +1,34 @@
 import datetime
 def format_numbers_to_indian_system(df, columns):
     def format_to_indian(x):
-        if not isinstance(x, int):
-            return x
-        s = f"{x:,}"
-        return s.replace(",", ",").replace(",,", ",")
+        if isinstance(x, int):
+            
+            s = f"{x:,}"
+            return s.replace(",", ",").replace(",,", ",")
+
+        elif isinstance(x, float):
+            # Convert float to Indian numbering format
+            formatted_float = "{:,.2f}".format(x)
+            integer_part, decimal_part = formatted_float.split(".")
+            integer_part = "{:,}".format(int(integer_part.replace(",", ""))).replace(",", ",")
+            return f"{integer_part}.{decimal_part}"
+        elif isinstance(x, str):
+            # Handle string representations of numbers with commas
+            try:
+                return format_to_indian(int(x.replace(",", "")))
+            except ValueError:
+                return x
+        return x
 
     for col in columns:
         if col in df.columns:
             df[col] = df[col].apply(format_to_indian)
         else:
             print(f"Column not found: {col}")
+    
     return df
+
+
 
 def revert_indian_number_format(df, cols):
     for col in cols:

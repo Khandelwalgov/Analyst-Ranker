@@ -63,6 +63,9 @@
                 <th>Success %</th>
                 <th>Average days taken by successful calls</th> 
                 <th>Number of unique stocks</th>
+                <th>Avg Return</th>
+                <th>Avg Return/Day</th>
+                <th>Number of calls considered</th>
                 <th>Details</th>
             </tr>
         </thead>
@@ -75,6 +78,9 @@
                 <td>{{ row['Success %'] }}</td>
                <td>{{ row['Average days taken by successful calls']}}</td> 
                 <td class ="hover-target" data-details="{{row.name}}">{{ row['No. of Unique Stocks'] }}</td>               
+                <td>{{ row['Average Return For Applicable Calls'] }}</td>
+               <td>{{ row['Average Return Per Day'] }}</td>
+               <td>{{ row['Number of calls considered for average return'] }}</td>
                 <td><button class="eye-button" data-toggle="modal" data-target="#detailsModal" data-analyst="{{ row.name }}">&#128065;</button></td>
             </tr>
             {% endfor %}
