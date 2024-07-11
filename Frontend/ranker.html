@@ -9,7 +9,7 @@
     <a href={{url_for('stocks')}}>Hot Stocks</a>
     <a href="{{url_for('recommendation')}}">Recommendations</a>
     <a class = "active" href="{{url_for('ranker')}}">Rank view</a>
-    <a href="#about">About</a>
+    <a href="{{url_for('portfolio')}}">My Portfolio</a>
     </div>
 <div class="container">
 {% endblock %}
@@ -46,17 +46,27 @@
             <tr>
                 <th>Rank</th>
                 <th>Analyst</th>
+                <th>Success %</h>
+                <th>Weighted Success %</th>
+                <th>Total Calls</th>
+                <th>Wt Number of Calls</th>
                 <th>Score</th>
-                <th>Details</th>
+                <!-- <th>Details</th> -->
             </tr>
         </thead>
         <tbody>
             {% for index, row in df.iterrows() %}
             <tr>
-                <th>{{ row.name +1 }}</th>
-                <td>{{ row['Analyst'] }}</td>
+                <th>{{ loop.index }}</th>
+                <td>{{ row.name }}</td>
+                <td>{{ row['Success %']}}</td>
+                <td>{{ row['Weighted Success %'] }}</td>
+                <td>{{ row['Total Calls in Period: ']}}</td>
+                <td>{{ row['Weighted Total Number of Calls'] }}</td>
+
                 <td>{{ row['Score'] }}</td>
-                <td><button class="eye-button" data-toggle="modal" data-target="#detailsModal" data-analyst="{{ row.name }}">&#128065;</button></td>
+                
+                <!-- <td><button class="eye-button" data-toggle="modal" data-target="#detailsModal" data-analyst="{{ row.name }}">&#128065;</button></td> -->
             </tr>
             {% endfor %}
         </tbody>

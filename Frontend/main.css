@@ -1,61 +1,61 @@
 body{
     margin: 10px;
     font-family: sans-serif;
-}
-input{
+    }
+    input{
     height: 15px;
-
-}
-select{
+    
+    }
+    select{
     border-style:none;
     background-color: whitesmoke;
     border-radius: 10px;
     padding: 7px;
-
-}
-table {
+    
+    }
+    /* table {
     border-collapse: collapse;
     width: 100%;
     margin-top: 20px;
-}
-#submit-button{
+    } */
+    #submit-button{
     color:white;
     background-color: blue;
     border-radius: 25px;
     padding: 10px;
     border-style: none;
     height: 35px;
-}
-th, td {
+    }
+    /* th, td {
     border: 1px solid black;
     padding: 8px;
     text-align: left;
-}
-td{
+    }
+    td{
     color: black ;
     background-color: #77a6f7;
     font-weight: bolder;
-}
-th {
+    }
+    th {
     color: #FFFFFF;
     background-color: #00887a;
-}
-.container{
+    } */
+    .container{
     display:flex;
     flex-direction: column;
     align-content: center;
     align-items: center;
     justify-content: center;
     justify-items: center;
-}
-input,select{
+    }
+    input,select{
     margin: 10px;
-}
-label{
+    }
+    label{
     margin:5px;
-}
-
-.modal {
+    }
+    
+    .modal {
     display: none;
     position: fixed;
     z-index: 1000;
@@ -66,31 +66,34 @@ label{
     overflow: auto;
     background-color: rgb(0,0,0);
     background-color: rgba(0,0,0,0.4);
-}
-
-.modal-content {
+    }
+    
+    .modal-content {
     background-color: #fefefe;
     margin: 15% auto;
-    padding: 20px;
+    padding-top: 20px;
+    padding-left: 4px;
+    padding-right: 4px;
+    padding-bottom: 20px;
     border: 1px solid #888;
-    width: 80%;
-}
-
-.close {
+    width: 95%;
+    }
+    
+    .close {
     color: #aaa;
     float: right;
     font-size: 28px;
     font-weight: bold;
-}
-
-.close:hover,
-.close:focus {
+    }
+    
+    .close:hover,
+    .close:focus {
     color: black;
     text-decoration: none;
     cursor: pointer;
-}
-
-.hover-modal {
+    }
+    
+    .hover-modal {
     display: none;
     position: absolute;
     background-color: white;
@@ -100,9 +103,9 @@ label{
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     max-height: 300px;
     overflow-y: auto; 
-}
-/*
-.modal {
+    }
+    /*
+    .modal {
     display: none;
     position: fixed;
     left: 50%;
@@ -113,63 +116,278 @@ label{
     z-index: 1001;
     width: 50%;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
-.modal-content {
+    }
+    
+    .modal-content {
     padding: 20px;
-}
-
-.close {
+    }
+    
+    .close {
     float: right;
     font-size: 1.5em;
     cursor: pointer;
-}
-*/
-/* Add a black background color to the top navigation */
-.topnav {
+    }
+    */
+    /* Add a black background color to the top navigation */
+    /* .topnav {
     background-color: #d3e3fc;
     overflow: hidden;
-  }
-  
-  /* Style the links inside the navigation bar */
-  .topnav a {
+    }
+    
+    .topnav a {
     float: left;
     color: #00887a;
     text-align: center;
     padding: 14px 16px;
     text-decoration: none;
     font-size: 17px;
-  }
-  
-  /* Change the color of links on hover */
-  .topnav a:hover {
+    }
+    
+    .topnav a:hover {
     background-color: #FFFFFF;
     color: black;
-  }
-  
-  /* Add a color to the active/current link */
-  .topnav a.active {
+    }
+    
+    .topnav a.active {
     background-color: #77a6f7;
     color: white;
-  }
-  #content-style{
+    } */
+    #content-style{
     display:flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     padding:0px;
     
-  }
-  #content{
+    }
+    #content{
     display:flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     padding:10px;
-  }
-  .upside-r,
-  .upside-c,
-  .deets,
-  .target{
+    }
+    .upside-r,
+    .upside-c,
+    .deets,
+    .target{
     display:none;
-  }
+    }
+    #graphModal {
+    display: none;
+    position: fixed;
+    z-index: 2;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgb(0,0,0);
+    background-color: rgba(0,0,0,0.4);
+    }
+    
+    .graph-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    }
+    /* Base Table Styles */
+    .table {
+        width: 100%;
+        margin-bottom: 1rem;
+        border-collapse: collapse;
+      }
+      
+      .table th,
+      .table td {
+        padding: 12px;
+        vertical-align: middle;
+        border: 1px solid #dee2e6;
+        overflow: hidden; /* Prevent overflow */
+      }
+      
+      /* Table Header */
+      .table thead th {
+        background-color: #77a6f7; /* Swapped color */
+        color: white; /* Header text color changed to white */
+        font-weight: bold;
+        text-align: left;
+        border-bottom: 2px solid #dee2e6;
+        position: sticky;
+        top: 0;
+        z-index: 10; /* Ensure header is above other rows */
+        opacity: 1; /* Ensure full opacity */
+      }
+      
+      /* Table Body */
+      .table tbody tr:nth-child(odd) {
+        background-color: #f2f2f2;
+      }
+      
+      .table tbody tr:nth-child(even) {
+        background-color: #e9ecef;
+      }
+      
+      .table tbody tr:hover {
+        background-color: #d3e3fc; /* Swapped color */
+      }
+      
+      .table tbody td {
+        color: #343a40;
+      }
+      
+      /* Table Rows */
+      .table tr {
+        transition: background-color 0.3s;
+      }
+      
+      /* Table Borders */
+      .table-bordered {
+        border: 2px solid #dee2e6;
+      }
+      
+      .table-bordered th,
+      .table-bordered td {
+        border: 1px solid #dee2e6;
+      }
+      
+      /* Responsive Table */
+      .table-responsive {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      /* Table Striped Rows */
+      .table-striped tbody tr:nth-of-type(odd) {
+        background-color: #f9f9f9;
+      }
+      
+      /* Ensure Hover Effect */
+      .table-striped tbody tr:hover {
+        background-color: #d3e3fc; /* Swapped color */
+      }
+    /* Apply the background to the entire site */
+    /* Apply the background to the entire site */
+    /* Apply the background to the entire site */
+    body {
+        background-color: #ffffff; /* Fallback color */
+        background-image: linear-gradient(to right, #9fc5ff, #b6ffaf);
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+      }
+      
+      /* Optional: Add a subtle pattern or image */
+      body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: url('https://www.transparenttextures.com/patterns/asfalt-light.png');
+        opacity: 0.1; /* Adjust opacity for subtlety */
+        z-index: -1;
+      }
+      
+      /* Container to hold content */
+      .container {
+        padding: 20px;
+      }
+      
+      /* Navigation Bar Styling */
+      .topnav {
+        background-color: #d3e3fc;
+        overflow: hidden;
+      }
+      
+      .topnav a {
+        float: left;
+        color: #00887a;
+        text-align: center;
+        padding: 14px 16px;
+        text-decoration: none;
+        font-size: 17px;
+      }
+      
+      .topnav a:hover {
+        background-color: #FFFFFF;
+        color: black;
+      }
+      
+      .topnav a.active {
+        background-color: #77a6f7;
+        color: white;
+      }
+    
+      /* Footer section */
+      .stocks-footer {
+        text-align: center;
+        margin-top: 40px;
+        color: #666;
+      }
+      .inlay-table {
+        border-collapse: collapse;
+        width: 100%;
+        max-width: 300px; /* Adjust max-width as per your design */
+        margin: 10px; /* Adjust margin as needed */
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Add a subtle shadow */
+        border: 1px solid #ccc; /* Border for the table */
+        border-radius: 4px; /* Rounded corners */
+      }
+      
+      .inlay-table th,
+      .inlay-table td {
+        padding: 8px;
+        text-align: left;
+        border-bottom: 1px solid #ddd; /* Bottom border for cells */
+      }
+      
+      .inlay-table th {
+        background-color: #f0f0f0; /* Light background color for header */
+        font-weight: bold;
+      }
+      
+      .inlay-table tbody tr:nth-child(even) {
+        background-color: #f9f9f9; /* Alternate row color */
+      }
+      
+      .inlay-table tbody tr:hover {
+        background-color: #f1f1f1; /* Hover background color */
+      }
+      #graphModal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1000; /* Adjust as needed */
+        /* background-color: #fff; */
+        border: 1px solid #ccc;
+        padding: 20px;
+      }
+      th[title] {
+        position: relative;
+        cursor: help; /* Change cursor to indicate it's clickable */
+    }
+    
+    th[title]:hover:after {
+        content: attr(title);
+        display: block;
+        position: absolute;
+        background: rgba(0, 0, 0, 0.8);
+        color: #fff;
+        padding: 5px;
+        border-radius: 3px;
+        z-index: 1000;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        white-space: nowrap; /* Prevent tooltip from breaking into lines */
+    }
+    
+      
+    

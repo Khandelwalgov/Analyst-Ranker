@@ -9,16 +9,18 @@
     <a href={{url_for('stocks')}}>Hot Stocks</a>
     <a href="{{url_for('recommendation')}}">Recommendations</a>
     <a href="{{url_for('ranker')}}">Rank view</a>
-    <a href="#about">About</a>
+    <a href="{{url_for('portfolio')}}">My Portfolio</a>
     </div>
 <div class="container">
 {% endblock %}
 
 
 {% block forms %}
-<h1>Okay works</h1>
+<h1>Analyst Ranker</h1>
 {% endblock %}   
 
 {% block df %}
-
+<div class="stocks-footer">
+<p>&copy; 2024 Stocks Website. All rights reserved.</p>
+</div>
 {% endblock %}

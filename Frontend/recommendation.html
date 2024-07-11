@@ -9,7 +9,7 @@
     <a href={{url_for('stocks')}}>Hot Stocks</a>
     <a class = "active" href="{{url_for('recommendation')}}">Recommendations</a>
     <a href="{{url_for('ranker')}}">Rank view</a>
-    <a href="#about">About</a>
+    <a href="{{url_for('portfolio')}}">My Portfolio</a>
   </div>
 <div class="container">
 {% endblock %}
@@ -53,13 +53,14 @@
         <option value="{{ option }}" {% if form_values['upside-factor-weight'] == option %}selected{% endif %}>{{ option }}</option>
     {% endfor %}
 </select>
-<label for ="minimum-upside-current">Minimum Current Upside</label>
+<br/>
+<label for ="minimum-upside-current">Min Current Average Upside</label>
 <select id ="minimum-upside-current" name ="minimum-upside-current">
     {% for option in dropdown_options_for_rec['minimum-upside-current'] %}
         <option value="{{ option }}" {% if form_values['minimum-upside-current'] == option %}selected{% endif %}>{{ option }}</option>
     {% endfor %}
 </select>
-<label for ="market-cap">Minimum Current Upside</label>
+<label for ="market-cap">Market Cap Filter</label>
 <select id ="market-cap" name ="market-cap">
     {% for option in dropdown_options_for_rec['market-cap'] %}
         <option value="{{ option }}" {% if form_values['market-cap'] == option %}selected{% endif %}>{{ option }}</option>
@@ -73,7 +74,7 @@
     {% if form_values['rank-consider'] != 'yes' %}
     style="pointer-events: none; opacity: 0.5;"
     {% endif %}>
-<h4>Ranking generation conditions</h4>
+<h4> Analyst Ranking generation conditions</h4>
 <div>
 <label for="start-date">Start Date:</label>
     <input type="date" id="start-date" name="start-date" value="{{ form_values['start-date'] }}" required>
@@ -156,42 +157,43 @@
       <thead>
           <tr>
               <th>S. No.</th>
-              <th>Company</th>
-              <th>Num of <br/>Recs</th>
+              <th title="Stock recommended">Company</th>
+              <th title="Number of calls for the given company in the period">Num of <br/>Recs</th>
               {% if wtcon %}
-              <th>Weighted Upside<br/>(Current) %</th>
+              <th title="Upside of the weighted average of analysts' targets on the LTP">Weighted Upside<br/>(Current) %</th>
               {% endif %}
               {% if wtcon %}
-              <th>Weighted Target<br/>(INR)</th>
+              <th title="Using Analyst rankings to take weighted average of the Targets">Weighted Target<br/>(INR)</th>
               {% endif %}
-              <th>LTP<br/>(INR)</th>
-              <th>Max Allowed Trade Value (Cr.)</th>
-              <th>Average Traded Value (Cr.)</th>   
+              <th title="LTP">LTP<br/>(INR)</th>
+              <th title="5% of the average traded value in crores">Max Allowed Trade Value (Cr.)</th>
+              <th title="(Average traded volume over last 20 days) x (LTP)">Average Traded Value (Cr.)</th>   
               
-              <th>Mkt Cap<br/>(Cr.)</th>
+              <th title="Market Cap of Company">Mkt Cap<br/>(Cr.)</th>
               
-              <th class="target">Avg Target<br/>(INR)</th>
-              <th class="target">Max Target<br/>(INR)</th>
-              <th class="target">Min Target<br/>(INR)</th>
+              <th title="Average Target given by analysts" class="target">Avg Target<br/>(INR)</th>
+              <th title="Maximum Target" class="target">Max Target<br/>(INR)</th>
+              <th title="Minimum Target" class="target">Min Target<br/>(INR)</th>
              
               
-              <th class="upside-r">Avg Upside<br/>(Reco Date)</th>
-              <th class="upside-r">Max Upside<br/>(Reco Date)</th>
-              <th class="upside-r">Min Upside<br/>(Reco Date)</th>
+              <th title="Average Upside at the time of Call"class="upside-r">Avg Upside<br/>(Reco Date)</th>
+              <th title="Maximum Upside given on call date" class="upside-r">Max Upside<br/>(Reco Date)</th>
+              <th title="Minimum Upside gien on call date"class="upside-r">Min Upside<br/>(Reco Date)</th>
               {% if wtcon %}
-              <th class="upside-r">Weighted Upside<br/>(Reco Date)</th>
+              <th title="Weighted average of the upsides given on call date"class="upside-r">Weighted Upside<br/>(Reco Date)</th>
               {% endif %}
-              <th class="upside-c">Avg Upside<br/>(Current)</th>
-              <th class="upside-c">Max Upside<br/>(Current)</th>
-              <th class="upside-c">Min Upside<br/>(Current)</th>
+              <th title="Upside of average Target on LTP"class="upside-c">Avg Upside<br/>(Current)</th>
+              <th title="Upside of max Target on LTP"class="upside-c">Max Upside<br/>(Current)</th>
+              <th title="Upside of min Target on LTP"class="upside-c">Min Upside<br/>(Current)</th>
               
               {% if wtcon %}
-              <th class="deets">Wt. Num<br/>of Recs</th>
+              <th title="Weighted Number of calls/recommendations"class="deets">Wt. Num<br/>of Recs</th>
               {% endif %}
-              <th class="deets"># Calls Factor</th>
-              <th class="deets">Wt. Upside Factor</th>
-              <th class="deets">Final Factor</th>
-              <th>Details</th>
+              <th title="Factor of weighted number of calls"class="deets"># Calls Factor</th>
+              <th title="Factor of weighted current upside"class="deets">Wt. Upside Factor</th>
+              <th title="Final Factor suggested to be used for choosing stocks to invest in"class="deets">Final Factor</th>
+              <th title="Calls on the given company ">Details</th>
+              <th title="Comparision graph">Graph</th>
           </tr>
       </thead>
       {% set counter = 1 %} 
@@ -234,7 +236,9 @@
               <td class="deets">{{row['Norm Wt Avg Upside Curr']}}</td>
               <td class="deets">{{row['Final Factor']}}</td>
               <td><button class="eye-button" data-toggle="modal" data-target="#detailsModal" data-company="{{ row.name }}">&#128065;</button></td>
-          </tr>
+              <td><button class="graph-button" data-company="{{ row.name }}">📈</button></td>
+
+            </tr>
 
           {% set counter = counter + 1 %}
           {% endfor %}
@@ -250,15 +254,25 @@
       <div id="stock-details"></div>
   </div>
 </div>
+<div id="graphModal" class="modal">
+    <div class="graph-content">
+        <span class="close">&times;</span>
+        <div id="graph-details"></div>
+    </div>
+</div>
 <script>
   document.addEventListener('DOMContentLoaded', function () {
       const eyeButtons = document.querySelectorAll('.eye-button');
       const modal = document.getElementById('detailsModal');
       const closeBtn = modal.querySelector('.close');
+      const graphButtons = document.querySelectorAll('.graph-button');
+      const graphModal = document.getElementById('graphModal');
+      const graphCloseBtn = graphModal.querySelector('.close');
+
 
       eyeButtons.forEach(button => {
           button.addEventListener('click', function () {
-              const company = this.getAttribute('data-company');
+              const company = encodeURIComponent(this.getAttribute('data-company'));  // URL encode the company name
               fetch(`/get_stocks_details_for_rec?company=${company}`)
                   .then(response => response.json())
                   .then(data => {
@@ -268,16 +282,39 @@
                   });
           });
       });
-
+      graphButtons.forEach(button => {
+                button.addEventListener('click', function () {
+                    const company = encodeURIComponent(this.getAttribute('data-company'));
+                    fetchAndGenerateGraph(company);
+                });
+            });
       closeBtn.addEventListener('click', function () {
           modal.style.display = 'none';
       });
+      graphCloseBtn.addEventListener('click', function () {
+                graphModal.style.display = 'none';
+            });
+        
 
       window.addEventListener('click', function (event) {
           if (event.target === modal) {
               modal.style.display = 'none';
           }
+          if (event.target === graphModal) {
+                    graphModal.style.display = 'none';
+                }
       });
+
+      function fetchAndGenerateGraph(company) {
+                fetch(`/generate_stock_graph?company=${company}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const graphDetails = document.getElementById('graph-details');
+                        const graphData = JSON.parse(data.graph);
+                        Plotly.newPlot(graphDetails, graphData.data, graphData.layout);
+                        graphModal.style.display = 'block';
+                    });
+            }
 
   });
   checkbox_upr=document.getElementById('Collapse upside')

@@ -9,7 +9,7 @@
     <a href={{url_for('stocks')}}>Hot Stocks</a>
     <a href="{{url_for('recommendation')}}">Recommendations</a>
     <a href="{{url_for('ranker')}}">Rank view</a>
-    <a href="#about">About</a>
+    <a href="{{url_for('portfolio')}}">My Portfolio</a>
     </div>
 <div class="container">
 {% endblock %}
@@ -43,6 +43,7 @@
 <form id="sort-form" method="POST" action="/sort_table">
     <label for="sort-by">Sort By:</label>
     <select name="sort_by" id="sort-by">
+        <option value="Weighted Success %">Weighted Success %</option>
         <option value="Success %">Success %</option>
         <option value="Total Calls in Period: ">Total Calls</option>
         <option value="Total Successes in the period: ">Total Successes</option>
@@ -52,7 +53,6 @@
 {% endblock %}   
 
 {% block df %}
-<h2>DataFrame Display ( calls from 2018 onwards only)</h2>
 <div class="container">
     <table class="table table-striped">
         <thead>
@@ -61,11 +61,14 @@
                 <th>Total Calls in Period</th>
                 <th>Total Successes in the period</th>
                 <th>Success %</th>
+                <th>Weighted Success %</th>
                 <th>Average days taken by successful calls</th> 
                 <th>Number of unique stocks</th>
-                <th>Avg Return</th>
-                <th>Avg Return/Day</th>
-                <th>Number of calls considered</th>
+                <!-- <th>Average Upside (Call Date)</th> -->
+                <!-- <th>Median Upside (Call Date)</th> -->
+                <th>Avg Return %</th>
+                <th>Avg Return % /Day</th>
+                <th>Number of calls considered for avg returns</th>
                 <th>Details</th>
             </tr>
         </thead>
@@ -76,9 +79,12 @@
                 <td>{{ row['Total Calls in Period: '] }}</td>
                 <td>{{ row['Total Successes in the period: '] }}</td>
                 <td>{{ row['Success %'] }}</td>
+                <td>{{row['Weighted Success %']}}</td>
                <td>{{ row['Average days taken by successful calls']}}</td> 
                 <td class ="hover-target" data-details="{{row.name}}">{{ row['No. of Unique Stocks'] }}</td>               
-                <td>{{ row['Average Return For Applicable Calls'] }}</td>
+                <td>{{row["Average Upside Reco"]}}</td>
+                <!-- <td>{{row["Median Upside Reco"]}}</td> -->
+                <!-- <td>{{ row['Average Return For Applicable Calls'] }}</td> -->
                <td>{{ row['Average Return Per Day'] }}</td>
                <td>{{ row['Number of calls considered for average return'] }}</td>
                 <td><button class="eye-button" data-toggle="modal" data-target="#detailsModal" data-analyst="{{ row.name }}">&#128065;</button></td>
@@ -106,7 +112,7 @@
 
         eyeButtons.forEach(button => {
             button.addEventListener('click', function () {
-                const analyst = this.getAttribute('data-analyst');
+                const analyst = encodeURIComponent(this.getAttribute('data-analyst'));
                 fetch(`/get_analyst_details?analyst=${analyst}`)
                     .then(response => response.json())
                     .then(data => {
@@ -129,7 +135,7 @@
 
         hoverTargets.forEach(target => {
             target.addEventListener('mouseenter', function (e) {
-                const details = this.getAttribute('data-details');
+                const details = encodeURIComponent(this.getAttribute('data-details'));
                 fetch(`/get_analyst_company_details?analyst=${details}`)
                 .then(response => response.json())
                     .then(data => {
