@@ -2,6 +2,9 @@ from flask import Flask, render_template, request, session, redirect, url_for, j
 from main import load_data, process_data, sort_data_frame, hot_stocks_backend,recommended_stocks,rankgen
 from util import convert_date, format_numbers_to_indian_system
 import pandas as pd
+import datetime
+import plotly.graph_objs as go
+import urllib.parse
 
 app = Flask(__name__)
 app.secret_key = 'koinahibtayega'  # Needed to encrypt session data
@@ -11,22 +14,33 @@ analyst_rank={}
 columns = ['Total Calls in Period: ', 'Total Successes in the period: ', 'Success %']
 final_df = pd.DataFrame(columns=columns)
 recommendation_df=pd.DataFrame(columns=columns)
+rank_df=pd.DataFrame(columns=columns)
+stocks_df=pd.DataFrame(columns=columns)
 form_values_rec={}
 unique_company={}
 calls_to_be_processed= {}
 rec_all_calls={}
-l1, analyst_dfs, company_data,list_of_unique_analysts, calls_by_company, calls_df = load_data()
+calls_by_company_stocks={}
+company_list,l1, analyst_dfs, company_data,list_of_unique_analysts, calls_by_company, calls_df = load_data()
 dropdown_options = {
 'period': ['1Y', '6M', '3M'],
 'analyst': list_of_unique_analysts
     }
 calls_df=pd.DataFrame(columns=columns)
 # Default values for the forms
+date_to_be_considered =datetime.date.today()-datetime.timedelta(days=365)
+dropdown_options_portfolio_gen={
+    'Company':company_list,
+}
 default_form_values = {
     'start-date': '2018-01-01',
-    'end-date': '2023-06-13',
+    'end-date': str(date_to_be_considered),
     'period': '1Y',
     'analyst': 'All'
+}
+default_form_values_stock={
+    'start-date': '2018-01-01',
+    'end-date': str(date_to_be_considered+datetime.timedelta(days=365)),
 }
 default_form_values_rec={
     'priority': 'Number of Recommendations',
@@ -35,15 +49,15 @@ default_form_values_rec={
     'sort-by':'Final Factor',
     'rank-consider':'yes',
     'start-date': '2021-01-01',
-    'end-date': '2023-06-13',
+    'end-date': str(date_to_be_considered),
     'period-considered': '1Y',
     'upside-factor-weight':'50%',
-    'minimum-upside-current':'10%',
+    'minimum-upside-current':'0%',
     'market-cap':'All'
 }
 default_form_values_ranker={
     'start-date': '2021-01-01',
-    'end-date': '2023-06-13',
+    'end-date': str(date_to_be_considered),
     'period-considered': '1Y'
 }
 # Dropdown options for analyst and recommendations
@@ -66,9 +80,10 @@ def index():
     session.clear()  
     global default_form_values
     global final_df
+    date_to_be_considered =datetime.date.today()-datetime.timedelta(days=365)
     default_form_values = {
-    'start-date': '2000-01-01',
-    'end-date': '2023-06-13',
+    'start-date': '2018-01-01',
+    'end-date': str(date_to_be_considered),
     'period': '1Y',
     'analyst': 'All'
     }
@@ -137,13 +152,18 @@ def sort_table():
 @app.route('/get_analyst_details')
 def get_analyst_details():
     analyst = request.args.get('analyst')
+    analyst = urllib.parse.unquote(analyst)
     if analyst in calls_to_be_processed:
         details_df = calls_to_be_processed[analyst].copy()
-        details_df.drop(['Remarks(if any)','To Be Taken'], axis=1,inplace=True)
+        if 'Remarks(if any)' in details_df.columns:
+            details_df.drop(['Remarks(if any)'], axis=1,inplace=True)
+        if 'To Be Taken'in details_df.columns:
+            details_df.drop(['To Be Taken'], axis=1,inplace=True)
         details_df['Market Cap']=pd.to_numeric(details_df['Market Cap'],errors='coerce')
         details_df['Market Cap']=details_df['Market Cap']/(10**7)
         details_df['Target']=details_df['Target'].round(1)
         details_df=format_numbers_to_indian_system(details_df,['Market Cap'])
+        details_df.reset_index(drop=True, inplace=True)
         details_html = details_df.to_html(classes='table table-striped')
         return jsonify({'html': details_html})
     return jsonify({'html': 'No details available for this analyst.'})
@@ -152,27 +172,49 @@ def get_analyst_details():
 @app.route('/get_analyst_company_details')
 def get_analyst_company_details():
     analyst = request.args.get('analyst')
+    analyst = urllib.parse.unquote(analyst)
     if analyst in unique_company:
         details_df=unique_company[analyst]
-        details_html=details_df.to_html(classes='table table-striped')
+        details_html=details_df.to_html(classes='inlay-table')
         return jsonify({'html': details_html})
     return jsonify({'html': 'No details available for this analyst.'})
 
 #To stocks.html
 @app.route('/stocks')
 def stocks():
-    df=hot_stocks_backend(calls_by_company,l1)
-    return render_template('stocks.html',df=df)
+    global default_form_values_stock
+    global stocks_df
+    return render_template('stocks.html',df=stocks_df,form_values =default_form_values_stock)
+@app.route('/generate_stocks_info',methods=['POST'])
+def generate_stocks_info():
+    global stocks_df
+    global calls_by_company_stocks
+    form_values = {
+        'start-date': request.form['start-date'],
+        'end-date': request.form['end-date']
+    }
+    
 
+    start_date = convert_date(form_values['start-date'])
+    end_date = convert_date(form_values['end-date'])
+    stocks_df,calls_by_company_stocks=hot_stocks_backend(start_date,end_date,calls_by_company,l1)
+    return render_template('stocks.html',df=stocks_df,form_values=form_values,)
+    
 @app.route('/get_stocks_details')
 def get_stocks_details():
+    global calls_by_company_stocks
     company = request.args.get('company')
-    if company in calls_by_company:
-        details_df=calls_by_company[company].copy()
-        details_df.drop(['Remarks(if any)','To Be Taken'], axis=1,inplace=True)
+    company = urllib.parse.unquote(company)
+    if company in calls_by_company_stocks:
+        details_df=calls_by_company_stocks[company].copy()
+        if 'Remarks(if any)' in details_df.columns:
+            details_df.drop(['Remarks(if any)'], axis=1,inplace=True)
+        if 'To Be Taken'in details_df.columns:
+            details_df.drop(['To Be Taken'], axis=1,inplace=True)
         details_df['Market Cap']=pd.to_numeric(details_df['Market Cap'],errors='coerce')
         details_df['Market Cap']=details_df['Market Cap']/(10**7)
         details_df=format_numbers_to_indian_system(details_df,['Market Cap'])
+        details_df=details_df.reset_index(drop=True)
         details_html=details_df.to_html(classes='table table-striped')
         return jsonify({'html': details_html})
     return jsonify({'html': 'No details available for this company.'})
@@ -251,15 +293,66 @@ def generate_rec():
 def get_stocks_details_for_rec():
     global rec_all_calls
     company = request.args.get('company')
+    company = urllib.parse.unquote(company)
     if company in rec_all_calls:
         details_df=rec_all_calls[company].copy()
-        details_df.drop(['Remarks(if any)','To Be Taken'], axis=1,inplace=True)
-        details_df['Market Cap']=pd.to_numeric(details_df['Market Cap'],errors='coerce')
-        details_df['Market Cap']=details_df['Market Cap']/(10**7)
-        details_df=format_numbers_to_indian_system(details_df,['Market Cap'])
+        if 'Remarks(if any)' in details_df.columns:
+            details_df.drop(['Remarks(if any)'], axis=1,inplace=True)
+        if 'To Be Taken'in details_df.columns:
+            details_df.drop(['To Be Taken'], axis=1,inplace=True)
+        if 'Market Cap' in details_df.columns:
+            details_df.drop(['Market Cap'], axis=1,inplace=True)
+        
+        # details_df['Market Cap']=pd.to_numeric(details_df['Market Cap'],errors='coerce')
+        # details_df['Market Cap']=details_df['Market Cap']/(10**7)
+        # details_df=format_numbers_to_indian_system(details_df,['Market Cap'])
         details_html=details_df.to_html(classes='table table-striped')
         return jsonify({'html': details_html})
     return jsonify({'html': 'No details available for this company.'})
+
+@app.route('/generate_stock_graph')
+def generate_stock_graph():
+    company = request.args.get('company')
+    company = urllib.parse.unquote(company)
+    global rec_all_call
+    #print(rec_all_calls)
+    if company in rec_all_calls:
+        df = rec_all_calls[company].copy()
+        hdf = company_data[company].copy()
+        
+        first_call_date = df['Date'].min()
+        today = datetime.date.today()
+        to_be_plotted = hdf[(hdf['Date'] >= first_call_date) & (hdf['Date'] <= today)]
+        date_list = to_be_plotted['Date'].tolist()
+        close_list = to_be_plotted['Close'].tolist()
+        
+        trace = go.Scatter(x=date_list, y=close_list, mode='lines', name=f'Price for {company}')
+        
+        trace_horizontal_lines = []
+        trace_markers = []
+        analyst_colors = ['orange', 'green', 'red', 'black','purple']  
+        for index, row in df.iterrows():
+            color_index = index % len(analyst_colors)
+            analyst_color = analyst_colors[color_index]
+            trace_line = go.Scatter(x=date_list, y=[row['Target']] * len(date_list), mode='lines', 
+                                    line=dict(color=analyst_color, dash='dash'), name=row['Analyst'])
+            trace_horizontal_lines.append(trace_line)
+            
+            trace_marker = go.Scatter(x=[row['Date']], y=[row['Target']], mode='markers', 
+                                      marker=dict(symbol='circle', size=10, color=analyst_color),
+                                      name=f'Call by {row["Analyst"]} - {row["Upside"]}%')
+            trace_markers.append(trace_marker)
+        
+        fig = go.Figure(data=[trace] + trace_horizontal_lines + trace_markers)
+        fig.update_layout(title=f'Stock Prices for {company}', xaxis=dict(title='Date'), yaxis=dict(title='Price'))
+
+        # Convert figure to JSON to send to frontend
+        graph_json = fig.to_json()
+        
+        return jsonify({'graph': graph_json})
+    
+    return jsonify({'graph': ''})
+
 @app.route('/show_full_table',methods=['POST'])
 def show_full_rec_table():
     global rec_all_calls
@@ -277,15 +370,15 @@ def show_full_rec_table():
     return render_template('recommendation.html',df=recommendation_df, dropdown_options_for_rec=dropdown_options_for_rec,form_values=form_values_rec,wtcon=wtcon)
 @app.route('/ranker')
 def ranker():
-    columns = ['Total Calls in Period: ', 'Total Successes in the period: ', 'Success %']
-    df = pd.DataFrame(columns=columns)
-    return render_template('ranker.html',df=df,dropdown_options_for_rec=dropdown_options_for_rec,form_values=default_form_values_ranker)
+    global rank_df
+    return render_template('ranker.html',df=rank_df,dropdown_options_for_rec=dropdown_options_for_rec,form_values=default_form_values_ranker)
 
 @app.route('/generate_rank',methods=['POST'])
 def generate_rank():
     global analyst_rank
     global analyst_dfs
     global company_data
+    global rank_df
     form_values_rank={
         'start-date':request.form['start-date'],
         'end-date':request.form['end-date'],
@@ -294,9 +387,9 @@ def generate_rank():
     start_date=convert_date(form_values_rank['start-date'])
     end_date= convert_date(form_values_rank['end-date'])
     dur=form_values_rank['period-considered']
-    dict1=rankgen(start_date, end_date, dur, analyst_dfs, company_data, l1,analyst_rank)
+    dict1,rank_df,dict_df=rankgen(start_date, end_date, dur, analyst_dfs, company_data, l1,analyst_rank)
     df= pd.DataFrame(list(dict1.items()),columns=['Analyst','Score'])
-    return render_template('ranker.html',df=df,dropdown_options_for_rec=dropdown_options_for_rec,form_values=form_values_rank)
+    return render_template('ranker.html',df=rank_df,dropdown_options_for_rec=dropdown_options_for_rec,form_values=form_values_rank)
 
 #reset session
 @app.route('/reset_session')

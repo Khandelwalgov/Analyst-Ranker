@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 from util import convert_date, revert_indian_number_format, format_numbers_to_indian_system
+from data import Data
 '''
 main.py file with the functions to be used with different paths and triggers in app.py
 
@@ -40,11 +41,16 @@ def load_data():
     history_df = pd.read_csv(historic_company_data_file_path)
 
 
+    
 
     list_of_unique_analysts=df_for_analysts['0']
     #List containing companies whose data/ticker symbol is not correct
     l1 = df['0'].tolist() 
-
+    company_list_temp=calls_df['Company'].unique().tolist()
+    company_list=[]
+    for i in company_list_temp:
+        if i not in l1:
+            company_list.append(i)
     # Converting the Date columns to DateTime objects
     calls_df['Date'] = calls_df['Date'].apply(convert_date)
     history_df['Date'] = history_df['Date'].apply(convert_date)
@@ -62,7 +68,7 @@ def load_data():
         analyst_dfs[analyst]=analyst_dfs[analyst].sort_values(by="Date",ascending=False)
 
 
-    return l1, analyst_dfs, company_data,list_of_unique_analysts, calls_by_company, calls_df
+    return company_list,l1, analyst_dfs, company_data,list_of_unique_analysts, calls_by_company, calls_df
 
 def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst_dfs, company_data):
 
@@ -122,7 +128,7 @@ def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst
    # print(calls_to_be_processed)
     for broker in calls_to_be_processed:
         bdf = calls_to_be_processed[broker]
-        sum_for_average=datetime.timedelta(days=0)
+        sum_for_average=0
         sum_for_avg_return=0
         sum_for_avg_per_day=0
         avg_return_count=0
@@ -130,6 +136,7 @@ def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst
         successes = 0
         percentage=0 
         broker_company={}
+        # histogram=[]
         for tar, adv, dat, com, reco in zip(bdf['Target'], bdf['Advice'], bdf['Date'], bdf['Company'],bdf["Reco"]):
             tar = float(tar)
             reco = float(reco)
@@ -191,7 +198,8 @@ def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst
                                 avg_return=(tar-reco)/reco
                                 sum_for_avg_return+=avg_return
                                 sum_for_avg_per_day+=avg_return/int((d-call_date).days) if int((d-call_date).days)!=0 else 0
-                                sum_for_average+=(d-call_date)
+                                sum_for_average+=(d-call_date).days
+                                # histogram.append((d-call_date).days)
                                 break
                     elif (reco > tar and reach <= tar):
                         cdf_dates = cdf["Date"].to_numpy()
@@ -202,7 +210,9 @@ def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst
                         start_index = min(start_index, len(cdf) - 1)
                         for d,l in zip(cdf["Date"].iloc[start_index:], cdf["Low"].iloc[start_index:]):
                             if l<=tar:
-                                sum_for_average+=(d-call_date)
+                                #sum_for_average+=(d-call_date).days
+                                #histogram.append((d-call_date).days)
+
                                 break
                 else:
                     if (adv in ['Buy', 'Neutral', 'Hold', 'Accumulate'] and reach >= tar):  
@@ -215,7 +225,8 @@ def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst
                         for d,h in zip(cdf["Date"].iloc[start_index:], cdf["High"].iloc[start_index:]):
                             if h>=tar:
                                 
-                                sum_for_average+=(d-call_date)
+                                #sum_for_average+=(d-call_date).days
+                               # histogram.append((d-call_date).days)
                                 break
                     elif (adv not in ['Buy', 'Neutral', 'Hold', 'Accumulate'] and reach <= tar):
                         cdf_dates = cdf["Date"].to_numpy()
@@ -227,23 +238,40 @@ def process_data(start_date, end_date, dur, analyst_to_be_displayed, l1, analyst
                         
                         for d,l in zip(cdf["Date"].iloc[start_index:], cdf["Low"].iloc[start_index:]):
                             if l<=tar:
-                                sum_for_average+=(d-call_date)
+                                #sum_for_average+=(d-call_date).days
+                                #histogram.append((d-call_date).days)
                                 break
         average_return=round((sum_for_avg_return/avg_return_count)*100,2) if avg_return_count!=0 else 0
         average_return_per_day=round((sum_for_avg_per_day/avg_return_count)*100,2) if avg_return_count!=0 else 0
-
+        average_upside_reco=bdf['Upside'].mean()
+        median_upside_reco=bdf['Upside'].median()
         unique_stocks=len(broker_company)
         percentage = (successes / calls) * 100 if calls != 0 else 0
         percentage = round(percentage, 1)
-        avg_time = (sum_for_average/calls).days if calls!=0 else 0
-        final_dict[broker] = {"Total Calls in Period: ": calls, "Total Successes in the period: ": successes,
-                              "Success %": percentage, "Average days taken by successful calls" : avg_time,"No. of Unique Stocks":unique_stocks,"Average Return For Applicable Calls":average_return,"Average Return Per Day":average_return_per_day,"Number of calls considered for average return":avg_return_count}
+        avg_time = int((sum_for_average /successes)) if successes!=0 else 0
+        final_dict[broker] = {"Total Calls in Period: ": calls,
+                              "Total Successes in the period: ": successes,
+                              "Success %": percentage,
+                              "Average days taken by successful calls" : avg_time,
+                              "No. of Unique Stocks":unique_stocks,
+                              "Average Return For Applicable Calls":average_return,
+                              "Average Return Per Day":average_return_per_day,
+                              "Number of calls considered for average return":avg_return_count,
+                              "Average Upside Reco":round(average_upside_reco,2),
+                              "Median Upside Reco": round(median_upside_reco,2)}
         unique_company[broker]=pd.DataFrame([broker_company], index=[broker]).transpose().sort_values(by=broker,ascending=False)
-
+    # histogram_df=pd.DataFrame(histogram)
+    # histogram_df.to_csv(r'E:\python\AvgTimeCheckHistogramBuySuccess.csv',index=False)
     # final_df that is used to render the df
     final_df = pd.DataFrame.from_dict(final_dict, orient='index')
-    if len(final_df) > 1:
-        final_df = final_df.sort_values(by='Success %', ascending=False)
+    if len(final_df) >= 1:
+        #final_df = final_df.sort_values(by='Success %', ascending=False)
+        final_df['Weighted Total Number of Calls']=(np.tanh(final_df['Total Calls in Period: ']*0.0025))
+        final_df['Weighted Success %']=(final_df['Weighted Total Number of Calls']*final_df['Success %'])
+        final_df=sort_data_frame(final_df, "Weighted Success %")
+        #df_rank_process['Weighted Total Number of Calls']=round(df_rank_process['Weighted Total Number of Calls'],2)
+        final_df['Weighted Success %']=round(final_df['Weighted Success %'],2)
+
     if final_df is not None:
         format_numbers_to_indian_system(final_df, ["Total Calls in Period: ", "Total Successes in the period: "])
     return final_df,calls_to_be_processed, unique_company
@@ -254,14 +282,17 @@ def sort_data_frame(final_df, sort_by):
     final_df = format_numbers_to_indian_system(final_df, ["Total Calls in Period: ", "Total Successes in the period: "])
     return final_df
 
-def hot_stocks_backend(calls_by_company, l1):
+def hot_stocks_backend(start_date,end_date,calls_by_company, l1):
     companies = []
     number_of_calls = []
-    
+    calls_by_company_stocks={}
     for company in calls_by_company:
         if company not in l1:
+            calls_by_company_stocks[company]=calls_by_company[company][(calls_by_company[company]['Date']>=start_date)&(calls_by_company[company]['Date']<=end_date)]
+    for company in calls_by_company_stocks:
+        if company not in l1:
             companies.append(company)
-            number_of_calls.append(len(calls_by_company[company]))
+            number_of_calls.append(len(calls_by_company_stocks[company]))
     
     # Create a DataFrame from dictionaries or tuples where each tuple is a separate row
     data = {'Company': companies, 'Number of calls made': number_of_calls}
@@ -270,7 +301,7 @@ def hot_stocks_backend(calls_by_company, l1):
     # Sort DataFrame by 'Number of calls made' in descending order
     stocks_details_df = stocks_details_df.sort_values(by="Number of calls made", ascending=False)
     
-    return stocks_details_df
+    return stocks_details_df,calls_by_company_stocks
 
 def recommended_stocks(mcap,upside_filter,upside_factor_weight,start_date, end_date, dur, analyst_dfs, company_data,rank_consider,sort_by,priority,period,num,calls_df,l1,analyst_rank):
     dfm=pd.read_csv(r'E:\python\WithMarketCap.csv')
@@ -396,9 +427,18 @@ def recommended_stocks(mcap,upside_filter,upside_factor_weight,start_date, end_d
                 }
     elif rank_consider=='yes':
         up_filter=dict_for_upside_filte[upside_filter]
-        analyst_rank =rankgen(start_date, end_date, dur, analyst_dfs, company_data, l1,analyst_rank)
+        analyst_rank,df_full,dict_full =rankgen(start_date, end_date, dur, analyst_dfs, company_data, l1,analyst_rank)
+        for i in rec_all_calls:
+            successper=[]
+            for index,row in rec_all_calls[i].iterrows():
+                if row['Analyst'] in dict_full:
+                    successper.append(dict_full[row['Analyst']]['Success %'])
+                else:
+                    successper.append(None)
+            rec_all_calls[i]['Success %']=successper
         for company, tempdf in rec_all_calls.items():
-            if company not in l1:
+            #and company!='Amara Raja Energy & ..'
+            if company not in l1 :
                 num_analyst = int(len(tempdf))
                 traded_value=0
                 recom_tradeable_value=0
@@ -538,24 +578,48 @@ def recommended_stocks(mcap,upside_filter,upside_factor_weight,start_date, end_d
     return recommendation_df,rec_all_calls
         
 def rankgen(start_date, end_date, dur, analyst_dfs, company_data, l1,analyst_rank):
+    def custom_curve_transform(x):
+    # Exponential-like growth initially
+        y = (np.exp(x / 7) - 1)**0.6
+        
+        # Curve down effect
+        y = y * (1 - (x / 100)**2)
+        
+        # Normalize to range 0-1
+        y_normalized = (y - np.min(y)) / (np.max(y) - np.min(y))
+        
+        return y_normalized
     df_rank_process,x,y=process_data(start_date, end_date, dur, 'All', l1, analyst_dfs, company_data)
     sort_data_frame(df_rank_process, "Success %")
     df_rank_process=revert_indian_number_format(df_rank_process, ["Total Calls in Period: ", "Total Successes in the period: "])
-    max_calls = df_rank_process["Total Calls in Period: "].max()
-    df_rank_process=df_rank_process.transpose()
-    dict1=df_rank_process.to_dict()
+    call_mid=(df_rank_process['Total Calls in Period: '].max() +1)/2
+    k=0.0012
+    #df_rank_process['Weighted Total Number of Calls']= (1/(1+(np.exp(-k*(df_rank_process['Total Calls in Period: ']-call_mid)))))
+    df_rank_process['Weighted Total Number of Calls']=(np.tanh(df_rank_process['Total Calls in Period: ']*0.0025))
+    #df_rank_process['Normalised Success %']= custom_curve_transform(df_rank_process['Success %'])
+    df_rank_process['Weighted Success %']=(df_rank_process['Weighted Total Number of Calls']*df_rank_process['Success %'])
+    #df_rank_process['Weighted Success %']=(df_rank_process['Weighted Total Number of Calls']*df_rank_process['Normalised Success %'])
+    df_rank_process=sort_data_frame(df_rank_process, "Weighted Success %")
+    df_rank_process['Weighted Total Number of Calls']=round(df_rank_process['Weighted Total Number of Calls'],2)
+    df_rank_process['Weighted Success %']=round(df_rank_process['Weighted Success %'],2)
+    ########df_rank_process.to_csv(r'E:\python\ForHistogram.csv')
+    df_rank_process2=df_rank_process.transpose()
+    dict1=df_rank_process2.to_dict()
     # for i in dict1:
     #     temp_df1=dict1[i]
     #     temp_df2=analyst_dfs[i]
     #     if not temp_df1.empty and not temp_df2.empty:
     count =0
+    score=[]
     n=len(dict1)
     for i in dict1:
         x= round((n-count)/n,4)
         count+=1
         analyst_rank[i]=x
+        score.append(x)
+    df_rank_process['Score']=score
     #print(analyst_rank)
-    return analyst_rank
+    return analyst_rank, df_rank_process,dict1
 
 
 
