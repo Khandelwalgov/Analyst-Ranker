@@ -76,7 +76,7 @@ dropdown_options_for_rec={
 #Home page route 
 @app.route('/')
 def index():
-    global l1, analyst_dfs, company_data,list_of_unique_analysts, calls_by_company, calls_df, dropdown_options
+    global company_list,l1, analyst_dfs, company_data,list_of_unique_analysts, calls_by_company, calls_df, dropdown_options
     session.clear()  
     global default_form_values
     global final_df
@@ -87,7 +87,7 @@ def index():
     'period': '1Y',
     'analyst': 'All'
     }
-    l1, analyst_dfs, company_data,list_of_unique_analysts, calls_by_company, calls_df = load_data()
+    company_list,l1, analyst_dfs, company_data,list_of_unique_analysts, calls_by_company, calls_df = load_data()
     dropdown_options = {
     'period': ['1Y', '6M', '3M'],
     'analyst': list_of_unique_analysts
@@ -390,7 +390,10 @@ def generate_rank():
     dict1,rank_df,dict_df=rankgen(start_date, end_date, dur, analyst_dfs, company_data, l1,analyst_rank)
     df= pd.DataFrame(list(dict1.items()),columns=['Analyst','Score'])
     return render_template('ranker.html',df=rank_df,dropdown_options_for_rec=dropdown_options_for_rec,form_values=form_values_rank)
-
+@app.route('/portfolio')
+def portfolio():
+    global dropdown_options_portfolio_gen
+    return render_template('portfolio.html',dropdown_options=dropdown_options_portfolio_gen)
 #reset session
 @app.route('/reset_session')
 def reset_session():
